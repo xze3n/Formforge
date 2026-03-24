@@ -8,25 +8,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { useApplicationRepository } from "../hooks/useApplicationRepository";
+import { ApplicationType } from "../types/application";
 
 export function AddApplication() {
   const navigate = useNavigate();
-  const [scholarshipType, setScholarshipType] = useState("");
+  const { add } = useApplicationRepository();
+  const [scholarshipType, setScholarshipType] = useState<ApplicationType | "">("");
   const [academicYear, setAcademicYear] = useState("");
-  const [semester, setSemester] = useState("");
+  const [semester, setSemester] = useState<"I" | "II" | "">("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Handle form submission
-    console.log("New application:", {
-      scholarshipType,
-      academicYear,
-      semester,
-    });
+    if (!scholarshipType || !academicYear || !semester) {
+      setError("Please fill in all required fields");
+      return;
+    }
     
-    // Navigate back to applications page
-    navigate("/scholarship-applications");
+    try {
+      add({
+        type: scholarshipType as ApplicationType,
+        academicYear,
+        semester: semester as "I" | "II",
+      });
+      
+      // Navigate back to applications page
+      navigate("/scholarship-applications");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create application");
+    }
   };
 
   return (
@@ -44,19 +56,25 @@ export function AddApplication() {
 
         {/* Form */}
         <div className="bg-white rounded-lg shadow p-8">
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800">{error}</p>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Scholarship Type */}
             <div className="space-y-2">
               <label htmlFor="scholarship-type" className="block text-sm font-medium text-gray-700">
                 Scholarship Type
               </label>
-              <Select value={scholarshipType} onValueChange={setScholarshipType} required>
+              <Select value={scholarshipType} onValueChange={(value) => setScholarshipType(value as ApplicationType)}>
                 <SelectTrigger id="scholarship-type">
                   <SelectValue placeholder="Select scholarship type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Merit">Merit</SelectItem>
                   <SelectItem value="Social">Social</SelectItem>
+                  <SelectItem value="Performance">Performance</SelectItem>
                 </SelectContent>
               </Select>
             </div>

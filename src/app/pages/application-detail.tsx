@@ -9,59 +9,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-
-// Mock data - in a real app, this would come from a database or API
-const mockApplications = [
-  {
-    id: 1,
-    type: "Merit",
-    academicYear: "2023/2024",
-    semester: "I",
-    createdAt: new Date(2023, 8, 15).toLocaleDateString(),
-    status: "Valid",
-  },
-  {
-    id: 2,
-    type: "Social",
-    academicYear: "2024/2025",
-    semester: "I",
-    createdAt: new Date(2024, 7, 20).toLocaleDateString(),
-    status: "Pending Action",
-  },
-  {
-    id: 3,
-    type: "Merit",
-    academicYear: "2024/2025",
-    semester: "II",
-    createdAt: new Date(2025, 0, 10).toLocaleDateString(),
-    status: "Valid",
-  },
-  {
-    id: 4,
-    type: "Social",
-    academicYear: "2025/2026",
-    semester: "I",
-    createdAt: new Date(2025, 8, 5).toLocaleDateString(),
-    status: "Valid",
-  },
-  {
-    id: 5,
-    type: "Merit",
-    academicYear: "2025/2026",
-    semester: "II",
-    createdAt: new Date(2026, 1, 15).toLocaleDateString(),
-    status: "Pending Action",
-  },
-];
+import { useApplicationRepository } from "../hooks/useApplicationRepository";
 
 export function ApplicationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { getById, update, delete: deleteApplication } = useApplicationRepository();
   
-  const application = mockApplications.find(app => app.id === Number(id));
-
+  const application = getById(Number(id));
   const [academicYear, setAcademicYear] = useState(application?.academicYear || "");
   const [semester, setSemester] = useState(application?.semester || "");
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   if (!application) {
     return (
@@ -78,24 +36,25 @@ export function ApplicationDetail() {
   }
 
   const handleSaveChanges = () => {
-    console.log("Save changes for application:", application.id, {
-      academicYear,
-      semester,
-    });
-    // Handle save logic here
-    alert("Changes saved successfully!");
+    if (application) {
+      update(application.id, {
+        academicYear,
+        semester: semester as "I" | "II",
+      });
+      setSuccessMessage("Changes saved successfully!");
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
   };
 
   const handleGenerateDossier = () => {
-    console.log("Generate dossier for application:", application.id);
+    console.log("Generate dossier for application:", application?.id);
     // Handle dossier generation logic here
-    alert("Generating dossier for Application #" + application.id);
+    alert("Generating dossier for Application #" + application?.id);
   };
 
   const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this application?")) {
-      console.log("Delete application:", application.id);
-      // Handle delete logic here
+    if (application && confirm("Are you sure you want to delete this application?")) {
+      deleteApplication(application.id);
       navigate("/scholarship-applications");
     }
   };
@@ -132,6 +91,11 @@ export function ApplicationDetail() {
           {/* Left Column - Application Details */}
           <div className="space-y-6">
             <div className="bg-white rounded-none shadow p-6">
+              {successMessage && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-green-800">{successMessage}</p>
+                </div>
+              )}
               <h2 className="text-xl font-semibold text-gray-900 mb-6">
                 Application Details
               </h2>
@@ -207,9 +171,11 @@ export function ApplicationDetail() {
                     Status
                   </label>
                   <span className={`inline-flex items-center px-3 py-1 rounded-none text-sm font-medium ${
-                    application.status === "Valid" 
+                    application.status === "Approved" 
                       ? "bg-green-100 text-green-800" 
-                      : "bg-yellow-100 text-yellow-800"
+                      : application.status === "Pending Action"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-gray-100 text-gray-800"
                   }`}>
                     {application.status}
                   </span>

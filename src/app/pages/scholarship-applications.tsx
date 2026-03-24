@@ -11,88 +11,11 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
-
-// Mock data for scholarship applications
-const generateMockData = () => {
-  const types = ["Merit", "Social", "Performance"];
-  const statuses = ["Draft", "Pending Action", "Approved"];
-  
-  const baseApplications = [
-    // 2023/2024 - 1 application
-    {
-      id: 1,
-      type: types[0],
-      academicYear: "2023/2024",
-      semester: "I",
-      createdAt: new Date(2023, 8, 15).toLocaleDateString(), // September 15, 2023
-      status: statuses[2],
-    },
-    // 2024/2025 - 3 applications
-    {
-      id: 2,
-      type: types[1],
-      academicYear: "2024/2025",
-      semester: "I",
-      createdAt: new Date(2024, 7, 20).toLocaleDateString(), // August 20, 2024
-      status: statuses[1],
-    },
-    {
-      id: 3,
-      type: types[0],
-      academicYear: "2024/2025",
-      semester: "II",
-      createdAt: new Date(2025, 0, 10).toLocaleDateString(), // January 10, 2025
-      status: statuses[2],
-    },
-    {
-      id: 4,
-      type: types[2],
-      academicYear: "2024/2025",
-      semester: "II",
-      createdAt: new Date(2025, 1, 5).toLocaleDateString(), // February 5, 2025
-      status: statuses[0],
-    },
-    // 2025/2026 - 4 applications
-    {
-      id: 5,
-      type: types[1],
-      academicYear: "2025/2026",
-      semester: "I",
-      createdAt: new Date(2025, 8, 5).toLocaleDateString(), // September 5, 2025
-      status: statuses[2],
-    },
-    {
-      id: 6,
-      type: types[0],
-      academicYear: "2025/2026",
-      semester: "II",
-      createdAt: new Date(2026, 1, 15).toLocaleDateString(), // February 15, 2026
-      status: statuses[1],
-    },
-    {
-      id: 7,
-      type: types[2],
-      academicYear: "2025/2026",
-      semester: "I",
-      createdAt: new Date(2025, 9, 10).toLocaleDateString(), // October 10, 2025
-      status: statuses[0],
-    },
-    {
-      id: 8,
-      type: types[1],
-      academicYear: "2025/2026",
-      semester: "II",
-      createdAt: new Date(2026, 2, 1).toLocaleDateString(), // March 1, 2026
-      status: statuses[1],
-    },
-  ];
-  
-  return baseApplications;
-};
+import { useApplicationRepository } from "../hooks/useApplicationRepository";
 
 export function ScholarshipApplications() {
   const navigate = useNavigate();
-  const [applications, setApplications] = useState(generateMockData());
+  const { applications, remove } = useApplicationRepository();
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"table" | "statistics" | "cards">("table");
   const itemsPerPage = 5;
@@ -104,7 +27,7 @@ export function ScholarshipApplications() {
   const currentApplications = applications.slice(startIndex, endIndex);
 
   const handleDelete = (id: number) => {
-    setApplications(applications.filter(app => app.id !== id));
+    remove(id);
     // Adjust current page if necessary
     if (currentApplications.length === 1 && currentPage > 1) {
       setCurrentPage(currentPage - 1);
