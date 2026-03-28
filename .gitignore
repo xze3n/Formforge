@@ -22,6 +22,11 @@ pids
 # Coverage directory
 /coverage
 
+# Playwright
+/playwright-report/
+/test-results/
+/blob-report/
+
 # Environment variables
 .env
 .env.local
