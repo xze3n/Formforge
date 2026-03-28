@@ -15,8 +15,8 @@ export function Login() {
   };
 
   return (
-    <main className="flex-1 flex items-center justify-center bg-gradient-to-b from-purple-50 to-white">
-      <div className="w-full max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+    <main className="flex-1 flex items-center justify-center bg-gradient-to-bl from-purple-50 via-purple-100 to-yellow-50 py-8">
+      <div className="w-full max-w-md mx-auto px-4">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">
             Welcome Back

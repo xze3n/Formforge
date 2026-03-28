@@ -4,9 +4,9 @@ import heroImage from '../../assets/219766762b942b2bfd94f339de3368a632f311f8.png
 
 export function Home() {
   return (
-    <main className="min-h-screen w-full flex items-center bg-gradient-to-br from-purple-50 via-purple-100 to-yellow-50">
+    <main className="flex-1 w-full flex items-center bg-gradient-to-br from-purple-50 via-purple-100 to-yellow-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full h-full">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center h-full min-h-screen">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center h-full">
           
           {/* Left side */}
           <div className="text-left flex flex-col justify-center">
