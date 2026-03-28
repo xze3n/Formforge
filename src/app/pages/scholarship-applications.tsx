@@ -64,7 +64,7 @@ export function ScholarshipApplications() {
 
   return (
     <main className="flex-1 bg-gradient-to-tr from-purple-50 via-purple-100 to-yellow-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10 py-8">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -84,49 +84,51 @@ export function ScholarshipApplications() {
         </div>
 
         {/* View Mode Toggle */}
-        <div className="mb-6 flex gap-2">
-          <Button
-            variant={viewMode === "table" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("table")}
-            className="gap-2"
-          >
-            <TableIcon className="size-4" />
-            Table View
-          </Button>
-          <Button
-            variant={viewMode === "statistics" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("statistics")}
-            className="gap-2"
-          >
-            <PieChart className="size-4" />
-            Statistics View
-          </Button>
-          <Button
-            variant={viewMode === "cards" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("cards")}
-            className="gap-2"
-          >
-            <LayoutGrid className="size-4" />
-            Cards View
-          </Button>
+        <div className="mb-6 overflow-x-auto pb-1">
+          <div className="flex w-max gap-2">
+            <Button
+              variant={viewMode === "table" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("table")}
+              className="gap-2 shrink-0"
+            >
+              <TableIcon className="size-4" />
+              Table View
+            </Button>
+            <Button
+              variant={viewMode === "statistics" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("statistics")}
+              className="gap-2 shrink-0"
+            >
+              <PieChart className="size-4" />
+              Statistics View
+            </Button>
+            <Button
+              variant={viewMode === "cards" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("cards")}
+              className="gap-2 shrink-0"
+            >
+              <LayoutGrid className="size-4" />
+              Cards View
+            </Button>
+          </div>
         </div>
 
         {/* Table */}
         {viewMode === "table" && (
-          <div className="bg-white rounded-lg shadow">
+          <div className="bg-white rounded-lg shadow-lg overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Scholarship Type</TableHead>
-                  <TableHead>Academic Year</TableHead>
-                  <TableHead>Semester</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="min-w-16 text-base text-center px-6 sm:px-8">ID</TableHead>
+                  <TableHead className="min-w-44 text-base px-6 sm:px-8">Scholarship Type</TableHead>
+                  <TableHead className="min-w-36 text-base px-6 sm:px-8">Academic Year</TableHead>
+                  <TableHead className="min-w-28 text-base px-6 sm:px-8">Semester</TableHead>
+                  <TableHead className="min-w-36 text-base px-6 sm:px-8">Created At</TableHead>
+                  <TableHead className="min-w-40 text-base px-6 sm:px-8">Status</TableHead>
+                  <TableHead className="text-right min-w-24 text-base px-6 sm:px-8">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -136,9 +138,9 @@ export function ScholarshipApplications() {
                     onClick={() => navigate(`/application/${app.id}`)}
                     className="cursor-pointer"
                   >
-                    <TableCell className="font-medium">{app.id}</TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${
+                    <TableCell className="font-medium text-base text-center py-4 px-6 sm:px-8">{app.id}</TableCell>
+                    <TableCell className="px-6 sm:px-8">
+                      <span className={`inline-flex items-center px-3 py-1 text-sm font-medium ${
                         app.type === "Merit" 
                           ? "bg-blue-100 text-blue-800" 
                           : app.type === "Social"
@@ -148,11 +150,11 @@ export function ScholarshipApplications() {
                         {app.type}
                       </span>
                     </TableCell>
-                    <TableCell>{app.academicYear}</TableCell>
-                    <TableCell>{app.semester}</TableCell>
-                    <TableCell>{app.createdAt}</TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${
+                    <TableCell className="text-base py-4 px-6 sm:px-8">{app.academicYear}</TableCell>
+                    <TableCell className="text-base py-4 px-6 sm:px-8">{app.semester}</TableCell>
+                    <TableCell className="text-base py-4 px-6 sm:px-8">{app.createdAt}</TableCell>
+                    <TableCell className="px-6 sm:px-8">
+                      <span className={`inline-flex items-center px-3 py-1 text-sm font-medium ${
                         app.status === "Approved" 
                           ? "bg-green-100 text-green-800" 
                           : app.status === "Pending Action"
@@ -162,7 +164,7 @@ export function ScholarshipApplications() {
                         {app.status}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right py-4 px-6 sm:px-8">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -283,14 +285,15 @@ export function ScholarshipApplications() {
 
         {/* Cards */}
         {viewMode === "cards" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentApplications.map((app) => (
-              <div 
-                key={app.id} 
-                className="bg-white rounded-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
-                onClick={() => navigate(`/application/${app.id}`)}
-              >
-                <div className="p-6">
+          <div className="overflow-x-auto pb-2">
+            <div className="flex gap-6 md:grid md:grid-cols-2 lg:grid-cols-3">
+              {currentApplications.map((app) => (
+                <div 
+                  key={app.id} 
+                  className="min-w-[300px] md:min-w-0 bg-white rounded-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
+                  onClick={() => navigate(`/application/${app.id}`)}
+                >
+                  <div className="p-6">
                   {/* Header with ID and Status */}
                   <div className="flex items-start justify-between mb-4">
                     <div>
@@ -363,27 +366,23 @@ export function ScholarshipApplications() {
                       <Trash2 className="size-4" />
                     </Button>
                   </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
         {/* Pagination - Show in table and cards view */}
         {(viewMode === "table" || viewMode === "cards") && (
-          <div className="mt-6 flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
-              <span className="font-medium">{Math.min(endIndex, applications.length)}</span> of{" "}
-              <span className="font-medium">{applications.length}</span> results
-            </div>
-            
-            <div className="flex items-center gap-2">
+          <div className="mt-6 space-y-3">
+            <div className="flex items-center gap-2 w-full">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
+                className="flex-1 sm:flex-none"
               >
                 <ChevronLeft className="size-4" />
                 Previous
@@ -421,10 +420,17 @@ export function ScholarshipApplications() {
                 size="sm"
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
+                className="flex-1 sm:flex-none"
               >
                 Next
                 <ChevronRight className="size-4" />
               </Button>
+            </div>
+
+            <div className="text-sm text-gray-700 whitespace-nowrap">
+              Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+              <span className="font-medium">{Math.min(endIndex, applications.length)}</span> of{" "}
+              <span className="font-medium">{applications.length}</span> results
             </div>
           </div>
         )}
