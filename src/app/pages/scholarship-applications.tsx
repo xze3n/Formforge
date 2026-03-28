@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { Trash2, Plus, ChevronLeft, ChevronRight, Table as TableIcon, PieChart, LayoutGrid } from "lucide-react";
+import { usePreferences } from "../hooks/usePreferences";
 import {
   Table,
   TableBody,
@@ -16,9 +17,15 @@ import { useApplicationRepository } from "../hooks/useApplicationRepository";
 export function ScholarshipApplications() {
   const navigate = useNavigate();
   const { applications, remove } = useApplicationRepository();
+  const { preferences, setViewMode: persistViewMode, setItemsPerPage: persistItemsPerPage } = usePreferences();
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState<"table" | "statistics" | "cards">("table");
-  const itemsPerPage = 5;
+  const [viewMode, setViewModeLocal] = useState<"table" | "statistics" | "cards">(preferences.viewMode);
+  const itemsPerPage = preferences.itemsPerPage;
+
+  const setViewMode = (mode: "table" | "statistics" | "cards") => {
+    setViewModeLocal(mode);
+    persistViewMode(mode);
+  };
 
   // Calculate pagination
   const totalPages = Math.ceil(applications.length / itemsPerPage);
