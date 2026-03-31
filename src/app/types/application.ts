@@ -14,6 +14,7 @@ export interface CreateApplicationInput {
   type: ApplicationType;
   academicYear: string;
   semester: "I" | "II";
+  status?: ApplicationStatus;
 }
 
 export interface UpdateApplicationInput {

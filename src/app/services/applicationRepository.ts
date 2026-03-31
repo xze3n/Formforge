@@ -109,7 +109,7 @@ class ApplicationRepository {
       id: this.nextId++,
       ...input,
       createdAt: new Date().toLocaleDateString(),
-      status: "Draft",
+      status: input.status ?? "Draft",
     };
 
     this.applications.push(newApplication);

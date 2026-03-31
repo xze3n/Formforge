@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
-import { Trash2, Plus, ChevronLeft, ChevronRight, Table as TableIcon, PieChart, LayoutGrid } from "lucide-react";
+import { Trash2, Plus, ChevronLeft, ChevronRight, Table as TableIcon, PieChart, LayoutGrid, Play, Square } from "lucide-react";
 import { usePreferences } from "../hooks/usePreferences";
 import {
   Table,
@@ -13,11 +13,44 @@ import {
 } from "../components/ui/table";
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { useApplicationRepository } from "../hooks/useApplicationRepository";
+import { faker } from "@faker-js/faker";
+import type { ApplicationType, ApplicationStatus } from "../types/application";
 
 export function ScholarshipApplications() {
   const navigate = useNavigate();
-  const { applications, remove } = useApplicationRepository();
+  const { applications, remove, add } = useApplicationRepository();
   const { preferences, setViewMode: persistViewMode, setItemsPerPage: persistItemsPerPage } = usePreferences();
+  const [isPopulating, setIsPopulating] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const generateRandomApplication = useCallback(() => {
+    const types: ApplicationType[] = ["Merit", "Social", "Performance"];
+    const semesters: ("I" | "II")[] = ["I", "II"];
+    const startYear = faker.number.int({ min: 2023, max: 2026 });
+    const statuses: ApplicationStatus[] = ["Draft", "Pending Action", "Approved"];
+    add({
+      type: faker.helpers.arrayElement(types),
+      academicYear: `${startYear}/${startYear + 1}`,
+      semester: faker.helpers.arrayElement(semesters),
+      status: faker.helpers.arrayElement(statuses),
+    });
+  }, [add]);
+
+  const handleStartPopulating = useCallback(() => {
+    if (intervalRef.current) return;
+    setIsPopulating(true);
+    intervalRef.current = setInterval(() => {
+      generateRandomApplication();
+    }, 1000);
+  }, [generateRandomApplication]);
+
+  const handleStopPopulating = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setIsPopulating(false);
+  }, []);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewModeLocal] = useState<"table" | "statistics" | "cards">(preferences.viewMode);
   const itemsPerPage = preferences.itemsPerPage;
@@ -83,11 +116,22 @@ export function ScholarshipApplications() {
         </div>
 
         {/* Add New Button */}
-        <div className="mb-6">
+        <div className="mb-6 flex gap-2 flex-wrap">
           <Button onClick={handleAddNew} className="gap-2">
             <Plus className="size-4" />
             Add New Application
           </Button>
+          {!isPopulating ? (
+            <Button onClick={handleStartPopulating} variant="outline" className="gap-2">
+              <Play className="size-4" />
+              Populate Table
+            </Button>
+          ) : (
+            <Button onClick={handleStopPopulating} variant="destructive" className="gap-2">
+              <Square className="size-4" />
+              Stop Populating
+            </Button>
+          )}
         </div>
 
         {/* View Mode Toggle */}
