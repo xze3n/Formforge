@@ -4,6 +4,17 @@ import { AnimatePresence, motion } from "motion/react";
 import { Button } from "../components/ui/button";
 import { FileText, Trash2, ArrowLeft, TrendingUp, DollarSign, Award } from "lucide-react";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -84,7 +95,7 @@ export function ApplicationDetail() {
   };
 
   const handleDelete = async () => {
-    if (application && confirm("Are you sure you want to delete this application?")) {
+    if (application) {
       await deleteApplication(application.id);
       navigate("/scholarship-applications");
     }
@@ -222,15 +233,30 @@ export function ApplicationDetail() {
                 >
                   Save Changes
                 </Button>
-                <Button
-                  onClick={handleDelete}
-                  variant="destructive"
-                  size="lg"
-                  className="w-full gap-2 rounded-none"
-                >
-                  <Trash2 className="size-5" />
-                  Delete Application
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="lg"
+                      className="w-full gap-2 rounded-none"
+                    >
+                      <Trash2 className="size-5" />
+                      Delete Application
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Application</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete application #{application.id}? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </div>

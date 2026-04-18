@@ -2,6 +2,16 @@ import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { Trash2, Plus, ChevronLeft, ChevronRight, Table as TableIcon, PieChart, LayoutGrid, Play, Square } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 import { usePreferences } from "../hooks/usePreferences";
 import {
   Table,
@@ -52,6 +62,7 @@ export function ScholarshipApplications() {
     setIsPopulating(false);
   }, []);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const [viewMode, setViewModeLocal] = useState<"table" | "statistics" | "cards">(preferences.viewMode);
   const itemsPerPage = preferences.itemsPerPage;
 
@@ -66,12 +77,18 @@ export function ScholarshipApplications() {
   const endIndex = startIndex + itemsPerPage;
   const currentApplications = applications.slice(startIndex, endIndex);
 
-  const handleDelete = async (id: number) => {
-    await remove(id);
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteId === null) return;
+    await remove(deleteId);
     // Adjust current page if necessary
     if (currentApplications.length === 1 && currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
+    setDeleteId(null);
   };
 
   const handleAddNew = () => {
@@ -104,6 +121,20 @@ export function ScholarshipApplications() {
 
   return (
     <main className="flex-1 bg-gradient-to-tr from-purple-50 via-purple-100 to-yellow-50">
+      <AlertDialog open={deleteId !== null} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Application</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete application #{deleteId}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10 py-8">
         {/* Header */}
         <div className="mb-6">
