@@ -23,28 +23,27 @@ import {
 } from "../components/ui/table";
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { useApplicationRepository } from "../hooks/useApplicationRepository";
+import { useEnums } from "../hooks/useEnums";
 import { faker } from "@faker-js/faker";
 import type { ApplicationType, ApplicationStatus } from "../types/application";
 
 export function ScholarshipApplications() {
   const navigate = useNavigate();
   const { applications, loading, remove, add } = useApplicationRepository();
+  const { enums } = useEnums();
   const { preferences, setViewMode: persistViewMode, setItemsPerPage: persistItemsPerPage } = usePreferences();
   const [isPopulating, setIsPopulating] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const generateRandomApplication = useCallback(async () => {
-    const types: ApplicationType[] = ["Merit", "Social", "Performance"];
-    const semesters: ("I" | "II")[] = ["I", "II"];
-    const startYear = faker.number.int({ min: 2023, max: 2026 });
-    const statuses: ApplicationStatus[] = ["Draft", "Pending Action", "Approved"];
+    if (!enums.types.length || !enums.semesters.length || !enums.statuses.length || !enums.academicYears.length) return;
     await add({
-      type: faker.helpers.arrayElement(types),
-      academicYear: `${startYear}/${startYear + 1}`,
-      semester: faker.helpers.arrayElement(semesters),
-      status: faker.helpers.arrayElement(statuses),
+      type: faker.helpers.arrayElement(enums.types) as ApplicationType,
+      academicYear: faker.helpers.arrayElement(enums.academicYears),
+      semester: faker.helpers.arrayElement(enums.semesters) as "I" | "II",
+      status: faker.helpers.arrayElement(enums.statuses) as ApplicationStatus,
     });
-  }, [add]);
+  }, [add, enums]);
 
   const handleStartPopulating = useCallback(() => {
     if (intervalRef.current) return;
@@ -99,25 +98,31 @@ export function ScholarshipApplications() {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
+  // Color palettes for dynamic chart data
+  const statusColors: Record<string, string> = {
+    "Draft": "#9ca3af", "Pending Action": "#fbbf24", "Approved": "#10b981",
+  };
+  const typeColors: Record<string, string> = {
+    "Merit": "#7c3aed", "Social": "#06b6d4", "Performance": "#fbbf24",
+  };
+  const fallbackColors = ["#7c3aed", "#06b6d4", "#fbbf24", "#10b981", "#f43f5e", "#9ca3af"];
+
   // Calculate statistics
   const totalApplications = applications.length;
-  const draftApplications = applications.filter(app => app.status === "Draft").length;
-  const approvedApplications = applications.filter(app => app.status === "Approved").length;
-  const pendingApplications = applications.filter(app => app.status === "Pending Action").length;
 
-  // Status distribution data
-  const statusData = [
-    { name: "Draft", value: draftApplications, color: "#9ca3af" },
-    { name: "Pending Action", value: pendingApplications, color: "#fbbf24" },
-    { name: "Approved", value: approvedApplications, color: "#10b981" },
-  ];
+  // Status distribution data — driven by backend enums
+  const statusData = enums.statuses.map((status, i) => ({
+    name: status,
+    value: applications.filter(app => app.status === status).length,
+    color: statusColors[status] ?? fallbackColors[i % fallbackColors.length],
+  }));
 
-  // Type distribution data
-  const typeData = [
-    { name: "Merit", value: applications.filter(app => app.type === "Merit").length, color: "#7c3aed" },
-    { name: "Social", value: applications.filter(app => app.type === "Social").length, color: "#06b6d4" },
-    { name: "Performance", value: applications.filter(app => app.type === "Performance").length, color: "#fbbf24" },
-  ];
+  // Type distribution data — driven by backend enums
+  const typeData = enums.types.map((type, i) => ({
+    name: type,
+    value: applications.filter(app => app.type === type).length,
+    color: typeColors[type] ?? fallbackColors[i % fallbackColors.length],
+  }));
 
   return (
     <main className="flex-1 bg-gradient-to-tr from-purple-50 via-purple-100 to-yellow-50">
@@ -285,31 +290,20 @@ export function ScholarshipApplications() {
                 </div>
               </div>
 
-              {/* Draft Applications Card */}
-              <div className="bg-white shadow p-6 border-l-4 border-gray-400">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Draft Applications</p>
-                    <p className="text-3xl font-bold text-gray-900">{draftApplications}</p>
-                  </div>
-                  <div className="size-12 bg-gray-100 flex items-center justify-center">
-                    <PieChart className="size-6 text-gray-600" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Approved Applications Card */}
-              <div className="bg-white shadow p-6 border-l-4 border-green-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Approved Applications</p>
-                    <p className="text-3xl font-bold text-gray-900">{approvedApplications}</p>
-                  </div>
-                  <div className="size-12 bg-green-100 flex items-center justify-center">
-                    <PieChart className="size-6 text-green-600" />
+              {/* Dynamic Status Cards */}
+              {statusData.map((status) => (
+                <div key={status.name} className="bg-white shadow p-6 border-l-4" style={{ borderLeftColor: status.color }}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">{status.name} Applications</p>
+                      <p className="text-3xl font-bold text-gray-900">{status.value}</p>
+                    </div>
+                    <div className="size-12 flex items-center justify-center" style={{ backgroundColor: status.color + "20" }}>
+                      <PieChart className="size-6" style={{ color: status.color }} />
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
 
             {/* Charts */}
@@ -501,7 +495,7 @@ export function ScholarshipApplications() {
                 variant="outline"
                 size="sm"
                 onClick={() => goToPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
+                disabled={currentPage >= totalPages}
                 className="flex-1 sm:flex-none"
               >
                 Next

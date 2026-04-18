@@ -50,21 +50,28 @@ test.describe('Feature 2: Scholarship Applications Management', () => {
   });
 
   test('should navigate to next page via pagination', async ({ page }) => {
-    // First page shows items 1-5
-    await expect(page.getByText(/Showing 1 to 5/)).toBeVisible();
+    // Wait for data to load
+    await page.locator('table tbody tr').first().waitFor();
+
+    // Read first page info dynamically
+    const firstPageText = await page.getByText(/Showing \d+ to \d+/).textContent();
+    const firstPageEnd = parseInt(firstPageText!.match(/to (\d+)/)![1]);
 
     await page.getByRole('button', { name: /Next/i }).click();
 
-    // Second page shows items 6-8
-    await expect(page.getByText(/Showing 6 to 8/)).toBeVisible();
+    // Second page should show items starting after the first page's last item
+    await expect(page.getByText(new RegExp(`Showing ${firstPageEnd + 1} to \\d+`))).toBeVisible();
   });
 
   test('should navigate back via Previous button', async ({ page }) => {
+    // Wait for data to load
+    await page.locator('table tbody tr').first().waitFor();
+
     await page.getByRole('button', { name: /Next/i }).click();
-    await expect(page.getByText(/Showing 6 to 8/)).toBeVisible();
+    await expect(page.getByText(/Showing \d+ to \d+/)).toBeVisible();
 
     await page.getByRole('button', { name: /Previous/i }).click();
-    await expect(page.getByText(/Showing 1 to 5/)).toBeVisible();
+    await expect(page.getByText(/Showing 1 to \d+/)).toBeVisible();
   });
 
   test('should disable Previous button on first page', async ({ page }) => {
@@ -72,7 +79,13 @@ test.describe('Feature 2: Scholarship Applications Management', () => {
   });
 
   test('should disable Next button on last page', async ({ page }) => {
-    await page.getByRole('button', { name: /Next/i }).click();
+    // Wait for data to load
+    await page.locator('table tbody tr').first().waitFor();
+
+    // Navigate to the last page
+    while (await page.getByRole('button', { name: /Next/i }).isEnabled()) {
+      await page.getByRole('button', { name: /Next/i }).click();
+    }
     await expect(page.getByRole('button', { name: /Next/i })).toBeDisabled();
   });
 
@@ -86,11 +99,17 @@ test.describe('Feature 2: Scholarship Applications Management', () => {
   // ── Delete Application ──────────────────────────────────────────────
 
   test('should delete an application from the table', async ({ page }) => {
+    // Wait for data to load
+    await page.locator('table tbody tr').first().waitFor();
+
     const initialText = await page.getByText(/Showing \d+ to \d+ of (\d+) results/).textContent();
     const initialTotal = parseInt(initialText!.match(/of (\d+)/)![1]);
 
-    // Click the delete button on the first row (stop propagation is handled in-app)
+    // Click the delete button on the first row — opens confirmation dialog
     await page.locator('table tbody tr').first().getByRole('button').click();
+
+    // Confirm deletion in the AlertDialog
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
 
     // Total should decrease by 1
     await expect(page.getByText(new RegExp(`of ${initialTotal - 1} results`))).toBeVisible();

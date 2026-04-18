@@ -9,14 +9,16 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { useApplicationRepository } from "../hooks/useApplicationRepository";
+import { useEnums } from "../hooks/useEnums";
 import { ApplicationType } from "../types/application";
 
 export function AddApplication() {
   const navigate = useNavigate();
   const { add } = useApplicationRepository();
-  const [scholarshipType, setScholarshipType] = useState<ApplicationType | "">("");
+  const { enums } = useEnums();
+  const [scholarshipType, setScholarshipType] = useState("");
   const [academicYear, setAcademicYear] = useState("");
-  const [semester, setSemester] = useState<"I" | "II" | "">("");
+  const [semester, setSemester] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,14 +69,14 @@ export function AddApplication() {
               <label htmlFor="scholarship-type" className="block text-sm font-medium text-gray-700">
                 Scholarship Type
               </label>
-              <Select value={scholarshipType} onValueChange={(value) => setScholarshipType(value as ApplicationType)}>
+              <Select value={scholarshipType} onValueChange={setScholarshipType}>
                 <SelectTrigger id="scholarship-type">
                   <SelectValue placeholder="Select scholarship type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Merit">Merit</SelectItem>
-                  <SelectItem value="Social">Social</SelectItem>
-                  <SelectItem value="Performance">Performance</SelectItem>
+                  {enums.types.map(type => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -89,10 +91,9 @@ export function AddApplication() {
                   <SelectValue placeholder="Select academic year" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2023/2024">2023/2024</SelectItem>
-                  <SelectItem value="2024/2025">2024/2025</SelectItem>
-                  <SelectItem value="2025/2026">2025/2026</SelectItem>
-                  <SelectItem value="2026/2027">2026/2027</SelectItem>
+                  {enums.academicYears.map(year => (
+                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -107,8 +108,9 @@ export function AddApplication() {
                   <SelectValue placeholder="Select semester" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="I">I</SelectItem>
-                  <SelectItem value="II">II</SelectItem>
+                  {enums.semesters.map(sem => (
+                    <SelectItem key={sem} value={sem}>{sem}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -90,9 +90,8 @@ test.describe('Feature 3: Add Application & Application Detail', () => {
   test('should show newly created application in the table', async ({ page }) => {
     await page.goto('/scholarship-applications');
 
-    // Capture initial total
-    const initialText = await page.getByText(/of (\d+) results/).textContent();
-    const initialTotal = parseInt(initialText!.match(/of (\d+)/)![1]);
+    // Wait for data to load
+    await page.locator('table tbody tr').first().waitFor();
 
     // Navigate to add application
     await page.getByRole('button', { name: /Add New Application/i }).click();
@@ -111,8 +110,15 @@ test.describe('Feature 3: Add Application & Application Detail', () => {
     await page.getByRole('button', { name: /Fill in my data/i }).click();
     await expect(page).toHaveURL('/scholarship-applications');
 
-    // Total should increase by 1
-    await expect(page.getByText(new RegExp(`of ${initialTotal + 1} results`))).toBeVisible();
+    // Wait for data to reload and verify the new application is in the table
+    // Navigate to the last page where new entries appear
+    await page.locator('table tbody tr').first().waitFor();
+    while (await page.getByRole('button', { name: /Next/i }).isEnabled()) {
+      await page.getByRole('button', { name: /Next/i }).click();
+    }
+
+    // Verify a row with the created application's data exists
+    await expect(page.locator('table tbody tr', { hasText: 'Performance' }).filter({ hasText: '2026/2027' }).filter({ hasText: 'II' }).first()).toBeVisible();
   });
 
   test('should create applications with each scholarship type', async ({ page }) => {
@@ -171,7 +177,24 @@ test.describe('Feature 3: Add Application & Application Detail', () => {
   });
 
   test('should allow editing academic year and saving changes', async ({ page }) => {
-    await page.goto('/application/1');
+    // Create a fresh application to edit
+    await page.goto('/add-application');
+    await page.locator('#scholarship-type').click();
+    await page.getByRole('option', { name: 'Merit' }).click();
+    await page.locator('#academic-year').click();
+    await page.getByRole('option', { name: '2025/2026' }).click();
+    await page.locator('#semester').click();
+    await page.getByRole('option', { name: 'I', exact: true }).click();
+    await page.getByRole('button', { name: /Fill in my data/i }).click();
+    await expect(page).toHaveURL('/scholarship-applications');
+
+    // Wait for data to load, then navigate to last page
+    await page.locator('table tbody tr').first().waitFor();
+    while (await page.getByRole('button', { name: /Next/i }).isEnabled()) {
+      await page.getByRole('button', { name: /Next/i }).click();
+    }
+    await page.locator('table tbody tr').last().click();
+    await expect(page).toHaveURL(/\/application\/\d+/);
 
     // Change academic year
     await page.locator('#academic-year').click();
@@ -185,11 +208,29 @@ test.describe('Feature 3: Add Application & Application Detail', () => {
   });
 
   test('should delete application from detail page and redirect', async ({ page }) => {
-    // Use dialog handler to accept the confirm dialog
-    page.on('dialog', dialog => dialog.accept());
+    // Create a fresh application to delete
+    await page.goto('/add-application');
+    await page.locator('#scholarship-type').click();
+    await page.getByRole('option', { name: 'Social' }).click();
+    await page.locator('#academic-year').click();
+    await page.getByRole('option', { name: '2025/2026' }).click();
+    await page.locator('#semester').click();
+    await page.getByRole('option', { name: 'II' }).click();
+    await page.getByRole('button', { name: /Fill in my data/i }).click();
+    await expect(page).toHaveURL('/scholarship-applications');
 
-    await page.goto('/application/1');
+    // Wait for data to load, then navigate to last page
+    await page.locator('table tbody tr').first().waitFor();
+    while (await page.getByRole('button', { name: /Next/i }).isEnabled()) {
+      await page.getByRole('button', { name: /Next/i }).click();
+    }
+    await page.locator('table tbody tr').last().click();
+    await expect(page).toHaveURL(/\/application\/\d+/);
+
     await page.getByRole('button', { name: /Delete Application/i }).click();
+
+    // Confirm deletion in the AlertDialog
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
 
     // Should redirect to applications list
     await expect(page).toHaveURL('/scholarship-applications');

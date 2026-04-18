@@ -22,11 +22,13 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { useApplicationRepository } from "../hooks/useApplicationRepository";
+import { useEnums } from "../hooks/useEnums";
 
 export function ApplicationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { applications, loading, getById, update, delete: deleteApplication } = useApplicationRepository();
+  const { enums } = useEnums();
   
   const application = getById(Number(id));
   const [academicYear, setAcademicYear] = useState("");
@@ -175,10 +177,9 @@ export function ApplicationDetail() {
                       <SelectValue placeholder="Select academic year" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="2023/2024">2023/2024</SelectItem>
-                      <SelectItem value="2024/2025">2024/2025</SelectItem>
-                      <SelectItem value="2025/2026">2025/2026</SelectItem>
-                      <SelectItem value="2026/2027">2026/2027</SelectItem>
+                      {enums.academicYears.map(year => (
+                        <SelectItem key={year} value={year}>{year}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -193,8 +194,9 @@ export function ApplicationDetail() {
                       <SelectValue placeholder="Select semester" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="I">I</SelectItem>
-                      <SelectItem value="II">II</SelectItem>
+                      {enums.semesters.map(sem => (
+                        <SelectItem key={sem} value={sem}>{sem}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
