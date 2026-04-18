@@ -1,11 +1,11 @@
 # Dependencies
-/node_modules
-/.pnp
+node_modules/
+.pnp
 .pnp.js
 
 # Production
-/build
-/dist
+build/
+dist/
 
 # Logs
 npm-debug.log*
@@ -20,12 +20,12 @@ pids
 *.pid.lock
 
 # Coverage directory
-/coverage
+coverage/
 
 # Playwright
-/playwright-report/
-/test-results/
-/blob-report/
+playwright-report/
+test-results/
+blob-report/
 
 # Environment variables
 .env
@@ -43,6 +43,19 @@ pids
 out/
 .next/
 .nuxt/
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+.factorypath
 
 # Mac / Windows system files
 .DS_Store

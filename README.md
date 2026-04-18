@@ -1,11 +1,26 @@
+# FormForge
 
-  # Create Scholarship Assistant Home Page
+A scholarship application management system with a React frontend and Spring Boot backend.
 
-  This is a code bundle for Create Scholarship Assistant Home Page. The original project is available at https://www.figma.com/design/dm6glQ05Ghar9xqca7hZ5n/Create-Scholarship-Assistant-Home-Page.
+## Project Structure
 
-  ## Running the code
+```
+├── frontend/   # React + Vite + TypeScript
+├── backend/    # Spring Boot (Java) — coming soon
+└── README.md
+```
 
-  Run `npm i` to install the dependencies.
+## Frontend
 
-  Run `npm run dev` to start the development server.
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+See [frontend/README.md](frontend/README.md) for more details.
+
+## Backend
+
+Coming soon — Spring Boot + Maven.
   
