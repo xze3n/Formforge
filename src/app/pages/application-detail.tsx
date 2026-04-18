@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
+import { AnimatePresence, motion } from "motion/react";
 import { Button } from "../components/ui/button";
 import { FileText, Trash2, ArrowLeft, TrendingUp, DollarSign, Award } from "lucide-react";
 import {
@@ -20,6 +21,21 @@ export function ApplicationDetail() {
   const [academicYear, setAcademicYear] = useState(application?.academicYear || "");
   const [semester, setSemester] = useState(application?.semester || "");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [moneyParticles, setMoneyParticles] = useState<{ id: number; x: number; y: number; rotation: number; startX: number }[]>([]);
+  const buttonRef = useRef<HTMLDivElement>(null);
+
+  const spawnMoney = useCallback(() => {
+    const halfWidth = buttonRef.current ? buttonRef.current.offsetWidth / 2 : 150;
+    const particles = Array.from({ length: 24 }, (_, i) => ({
+      id: Date.now() + i,
+      startX: (Math.random() - 0.5) * 2 * halfWidth,
+      x: (Math.random() - 0.5) * 400,
+      y: -(Math.random() * 300 + 100),
+      rotation: (Math.random() - 0.5) * 720,
+    }));
+    setMoneyParticles(particles);
+    setTimeout(() => setMoneyParticles([]), 1500);
+  }, []);
 
   if (!application) {
     return (
@@ -47,9 +63,8 @@ export function ApplicationDetail() {
   };
 
   const handleGenerateDossier = () => {
+    spawnMoney();
     console.log("Generate dossier for application:", application?.id);
-    // Handle dossier generation logic here
-    alert("Generating dossier for Application #" + application?.id);
   };
 
   const handleDelete = () => {
@@ -280,14 +295,30 @@ export function ApplicationDetail() {
               </div>
 
               {/* Action Button */}
-              <Button
-                onClick={handleGenerateDossier}
-                size="lg"
-                className="w-full gap-2 bg-yellow-400 text-purple-900 hover:bg-yellow-500 rounded-none"
-              >
-                <FileText className="size-5" />
-                Generate Dossier
-              </Button>
+              <div className="relative" ref={buttonRef}>
+                <Button
+                  onClick={handleGenerateDossier}
+                  size="lg"
+                  className="w-full gap-2 bg-yellow-400 text-purple-900 hover:bg-yellow-500 rounded-none"
+                >
+                  <FileText className="size-5" />
+                  Generate Dossier
+                </Button>
+                <AnimatePresence>
+                  {moneyParticles.map((p) => (
+                    <motion.span
+                      key={p.id}
+                      initial={{ opacity: 1, x: p.startX, y: 0, scale: 2.5, rotate: 0 }}
+                      animate={{ opacity: 0, x: p.x, y: p.y, scale: 0.6, rotate: p.rotation }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 2.0, ease: "easeOut" }}
+                      className="pointer-events-none absolute left-1/2 top-1/2 text-2xl"
+                    >
+                      💸
+                    </motion.span>
+                  ))}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>
