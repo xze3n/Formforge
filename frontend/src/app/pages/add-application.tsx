@@ -19,7 +19,7 @@ export function AddApplication() {
   const [semester, setSemester] = useState<"I" | "II" | "">("");
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!scholarshipType || !academicYear || !semester) {
@@ -28,7 +28,7 @@ export function AddApplication() {
     }
     
     try {
-      add({
+      await add({
         type: scholarshipType as ApplicationType,
         academicYear,
         semester: semester as "I" | "II",

@@ -1,13 +1,12 @@
-import { useState, useReducer, useCallback } from "react";
+import { useState, useReducer, useCallback, useEffect } from "react";
 import { Application, CreateApplicationInput, UpdateApplicationInput } from "../types/application";
-import { applicationRepository } from "../services/applicationRepository";
+import { applicationApi } from "../services/applicationApi";
 
 type Action =
   | { type: "SET_APPLICATIONS"; payload: Application[] }
   | { type: "ADD_APPLICATION"; payload: Application }
   | { type: "UPDATE_APPLICATION"; payload: Application }
-  | { type: "DELETE_APPLICATION"; payload: number }
-  | { type: "RESET" };
+  | { type: "DELETE_APPLICATION"; payload: number };
 
 const appsReducer = (state: Application[], action: Action): Application[] => {
   switch (action.type) {
@@ -21,39 +20,41 @@ const appsReducer = (state: Application[], action: Action): Application[] => {
       );
     case "DELETE_APPLICATION":
       return state.filter(app => app.id !== action.payload);
-    case "RESET":
-      applicationRepository.reset();
-      return applicationRepository.getAll();
     default:
       return state;
   }
 };
 
 /**
- * Custom hook to manage applications using the application repository
+ * Custom hook to manage applications via the backend API
  */
 export const useApplicationRepository = () => {
-  const [applications, dispatch] = useReducer(
-    appsReducer,
-    [],
-    () => applicationRepository.getAll()
-  );
+  const [applications, dispatch] = useReducer(appsReducer, []);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const clearError = useCallback(() => setError(null), []);
+
+  // Fetch all applications on mount
+  useEffect(() => {
+    applicationApi.getAll()
+      .then(apps => dispatch({ type: "SET_APPLICATIONS", payload: apps }))
+      .catch(err => setError(err instanceof Error ? err.message : "Failed to load applications"))
+      .finally(() => setLoading(false));
+  }, []);
 
   const getAll = useCallback((): Application[] => {
     return applications;
   }, [applications]);
 
   const getById = useCallback((id: number): Application | undefined => {
-    return applicationRepository.getById(id);
-  }, []);
+    return applications.find(app => app.id === id);
+  }, [applications]);
 
-  const add = useCallback((input: CreateApplicationInput): Application => {
+  const add = useCallback(async (input: CreateApplicationInput): Promise<Application> => {
     try {
       clearError();
-      const newApplication = applicationRepository.create(input);
+      const newApplication = await applicationApi.create(input);
       dispatch({ type: "ADD_APPLICATION", payload: newApplication });
       return newApplication;
     } catch (err) {
@@ -64,13 +65,11 @@ export const useApplicationRepository = () => {
   }, [clearError]);
 
   const update = useCallback(
-    (id: number, input: UpdateApplicationInput): Application | undefined => {
+    async (id: number, input: UpdateApplicationInput): Promise<Application> => {
       try {
         clearError();
-        const updated = applicationRepository.update(id, input);
-        if (updated) {
-          dispatch({ type: "UPDATE_APPLICATION", payload: updated });
-        }
+        const updated = await applicationApi.update(id, input);
+        dispatch({ type: "UPDATE_APPLICATION", payload: updated });
         return updated;
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to update application";
@@ -81,14 +80,12 @@ export const useApplicationRepository = () => {
     [clearError]
   );
 
-  const remove = useCallback((id: number): boolean => {
+  const remove = useCallback(async (id: number): Promise<boolean> => {
     try {
       clearError();
-      const deleted = applicationRepository.delete(id);
-      if (deleted) {
-        dispatch({ type: "DELETE_APPLICATION", payload: id });
-      }
-      return deleted;
+      await applicationApi.delete(id);
+      dispatch({ type: "DELETE_APPLICATION", payload: id });
+      return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to delete application";
       setError(message);
@@ -96,12 +93,9 @@ export const useApplicationRepository = () => {
     }
   }, [clearError]);
 
-  const reset = useCallback(() => {
-    dispatch({ type: "RESET" });
-  }, []);
-
   return {
     applications,
+    loading,
     error,
     clearError,
     getAll,
@@ -109,7 +103,6 @@ export const useApplicationRepository = () => {
     add,
     update,
     remove,
-    delete: remove, // Alias for convenience
-    reset,
+    delete: remove,
   };
 };

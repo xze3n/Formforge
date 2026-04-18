@@ -18,17 +18,17 @@ import type { ApplicationType, ApplicationStatus } from "../types/application";
 
 export function ScholarshipApplications() {
   const navigate = useNavigate();
-  const { applications, remove, add } = useApplicationRepository();
+  const { applications, loading, remove, add } = useApplicationRepository();
   const { preferences, setViewMode: persistViewMode, setItemsPerPage: persistItemsPerPage } = usePreferences();
   const [isPopulating, setIsPopulating] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const generateRandomApplication = useCallback(() => {
+  const generateRandomApplication = useCallback(async () => {
     const types: ApplicationType[] = ["Merit", "Social", "Performance"];
     const semesters: ("I" | "II")[] = ["I", "II"];
     const startYear = faker.number.int({ min: 2023, max: 2026 });
     const statuses: ApplicationStatus[] = ["Draft", "Pending Action", "Approved"];
-    add({
+    await add({
       type: faker.helpers.arrayElement(types),
       academicYear: `${startYear}/${startYear + 1}`,
       semester: faker.helpers.arrayElement(semesters),
@@ -66,8 +66,8 @@ export function ScholarshipApplications() {
   const endIndex = startIndex + itemsPerPage;
   const currentApplications = applications.slice(startIndex, endIndex);
 
-  const handleDelete = (id: number) => {
-    remove(id);
+  const handleDelete = async (id: number) => {
+    await remove(id);
     // Adjust current page if necessary
     if (currentApplications.length === 1 && currentPage > 1) {
       setCurrentPage(currentPage - 1);

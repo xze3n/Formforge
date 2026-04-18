@@ -15,14 +15,22 @@ import { useApplicationRepository } from "../hooks/useApplicationRepository";
 export function ApplicationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getById, update, delete: deleteApplication } = useApplicationRepository();
+  const { applications, loading, getById, update, delete: deleteApplication } = useApplicationRepository();
   
   const application = getById(Number(id));
-  const [academicYear, setAcademicYear] = useState(application?.academicYear || "");
-  const [semester, setSemester] = useState(application?.semester || "");
+  const [academicYear, setAcademicYear] = useState("");
+  const [semester, setSemester] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [moneyParticles, setMoneyParticles] = useState<{ id: number; x: number; y: number; rotation: number; startX: number }[]>([]);
   const buttonRef = useRef<HTMLDivElement>(null);
+  const [initialized, setInitialized] = useState(false);
+
+  // Sync form state when application loads
+  if (application && !initialized) {
+    setAcademicYear(application.academicYear);
+    setSemester(application.semester);
+    setInitialized(true);
+  }
 
   const spawnMoney = useCallback(() => {
     const halfWidth = buttonRef.current ? buttonRef.current.offsetWidth / 2 : 150;
@@ -36,6 +44,14 @@ export function ApplicationDetail() {
     setMoneyParticles(particles);
     setTimeout(() => setMoneyParticles([]), 1500);
   }, []);
+
+  if (loading) {
+    return (
+      <main className="flex-1 bg-gradient-to-tr from-purple-50 via-purple-100 to-yellow-50 flex items-center justify-center">
+        <p className="text-gray-600 text-lg">Loading...</p>
+      </main>
+    );
+  }
 
   if (!application) {
     return (
@@ -51,9 +67,9 @@ export function ApplicationDetail() {
     );
   }
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (application) {
-      update(application.id, {
+      await update(application.id, {
         academicYear,
         semester: semester as "I" | "II",
       });
@@ -67,9 +83,9 @@ export function ApplicationDetail() {
     console.log("Generate dossier for application:", application?.id);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (application && confirm("Are you sure you want to delete this application?")) {
-      deleteApplication(application.id);
+      await deleteApplication(application.id);
       navigate("/scholarship-applications");
     }
   };
