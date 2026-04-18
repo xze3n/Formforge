@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Feature 3: Add Application & Application Detail', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.context().addCookies([
+      { name: 'ff_cookie_consent', value: 'granted', domain: 'localhost', path: '/' },
+    ]);
+  });
   // ── Navigating to Add Application ───────────────────────────────────
 
   test('should navigate to add-application page from applications list', async ({ page }) => {

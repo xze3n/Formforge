@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Feature 2: Scholarship Applications Management', () => {
   test.beforeEach(async ({ page }) => {
+    await page.context().addCookies([
+      { name: 'ff_cookie_consent', value: 'granted', domain: 'localhost', path: '/' },
+    ]);
     await page.goto('/scholarship-applications');
   });
 
