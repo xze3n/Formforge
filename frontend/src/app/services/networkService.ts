@@ -1,6 +1,6 @@
 type NetworkListener = (online: boolean) => void;
 
-const HEALTH_URL = "/api/enums";
+const GRAPHQL_URL = "/graphql";
 const PING_INTERVAL = 10_000;
 
 let listeners: NetworkListener[] = [];
@@ -9,8 +9,10 @@ let pingTimer: ReturnType<typeof setInterval> | null = null;
 
 async function checkServer(): Promise<boolean> {
   try {
-    const res = await fetch(HEALTH_URL, {
-      method: "HEAD",
+    const res = await fetch(GRAPHQL_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: "{ __typename }" }),
       cache: "no-store",
     });
     return res.ok;

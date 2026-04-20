@@ -60,4 +60,41 @@ class EnumTest {
         assertEquals(Semester.I, Semester.valueOf("I"));
         assertEquals(Semester.II, Semester.valueOf("II"));
     }
+
+    // ── fromValue() tests ──────────────────────────────────────────────
+
+    @Test
+    void applicationTypeFromValue() {
+        assertEquals(ApplicationType.MERIT, ApplicationType.fromValue("Merit"));
+        assertEquals(ApplicationType.SOCIAL, ApplicationType.fromValue("Social"));
+        assertEquals(ApplicationType.PERFORMANCE, ApplicationType.fromValue("Performance"));
+    }
+
+    @Test
+    void applicationTypeFromValue_invalid() {
+        assertThrows(IllegalArgumentException.class, () -> ApplicationType.fromValue("Invalid"));
+    }
+
+    @Test
+    void applicationStatusFromValue() {
+        assertEquals(ApplicationStatus.DRAFT, ApplicationStatus.fromValue("Draft"));
+        assertEquals(ApplicationStatus.PENDING_ACTION, ApplicationStatus.fromValue("Pending Action"));
+        assertEquals(ApplicationStatus.APPROVED, ApplicationStatus.fromValue("Approved"));
+    }
+
+    @Test
+    void applicationStatusFromValue_invalid() {
+        assertThrows(IllegalArgumentException.class, () -> ApplicationStatus.fromValue("Invalid"));
+    }
+
+    @Test
+    void semesterFromValue() {
+        assertEquals(Semester.I, Semester.fromValue("I"));
+        assertEquals(Semester.II, Semester.fromValue("II"));
+    }
+
+    @Test
+    void semesterFromValue_invalid() {
+        assertThrows(IllegalArgumentException.class, () -> Semester.fromValue("III"));
+    }
 }

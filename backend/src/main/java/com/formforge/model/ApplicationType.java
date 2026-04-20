@@ -17,4 +17,16 @@ public enum ApplicationType {
     public String getValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return value;
+    }
+
+    public static ApplicationType fromValue(String value) {
+        for (ApplicationType t : values()) {
+            if (t.value.equalsIgnoreCase(value)) return t;
+        }
+        throw new IllegalArgumentException("Unknown ApplicationType: " + value);
+    }
 }

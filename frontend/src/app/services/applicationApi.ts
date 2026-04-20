@@ -1,61 +1,55 @@
 import { Application, CreateApplicationInput, UpdateApplicationInput } from "../types/application";
-
-const BASE_URL = "/api/applications";
-
-interface PageResponse<T> {
-  content: T[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
-}
-
-async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    const message = body.error || Object.values(body).join(", ") || response.statusText;
-    throw new Error(message);
-  }
-  return response.json();
-}
+import { graphqlRequest } from "./graphqlClient";
 
 export const applicationApi = {
   async getAll(): Promise<Application[]> {
-    const response = await fetch(`${BASE_URL}?page=0&size=1000`);
-    const page = await handleResponse<PageResponse<Application>>(response);
-    return page.content;
+    const query = `
+      query {
+        applications(page: 0, size: 1000) {
+          content { id type academicYear semester createdAt status }
+        }
+      }
+    `;
+    const data = await graphqlRequest<{ applications: { content: Application[] } }>(query);
+    return data.applications.content;
   },
 
   async getById(id: number): Promise<Application> {
-    const response = await fetch(`${BASE_URL}/${id}`);
-    return handleResponse<Application>(response);
+    const query = `
+      query($id: ID!) {
+        application(id: $id) { id type academicYear semester createdAt status }
+      }
+    `;
+    const data = await graphqlRequest<{ application: Application }>(query, { id });
+    return data.application;
   },
 
   async create(input: CreateApplicationInput): Promise<Application> {
-    const response = await fetch(BASE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-    return handleResponse<Application>(response);
+    const query = `
+      mutation($input: CreateApplicationInput!) {
+        createApplication(input: $input) { id type academicYear semester createdAt status }
+      }
+    `;
+    const data = await graphqlRequest<{ createApplication: Application }>(query, { input });
+    return data.createApplication;
   },
 
   async update(id: number, input: UpdateApplicationInput): Promise<Application> {
-    const response = await fetch(`${BASE_URL}/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-    return handleResponse<Application>(response);
+    const query = `
+      mutation($id: ID!, $input: UpdateApplicationInput!) {
+        updateApplication(id: $id, input: $input) { id type academicYear semester createdAt status }
+      }
+    `;
+    const data = await graphqlRequest<{ updateApplication: Application }>(query, { id, input });
+    return data.updateApplication;
   },
 
   async delete(id: number): Promise<void> {
-    const response = await fetch(`${BASE_URL}/${id}`, {
-      method: "DELETE",
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || "Failed to delete application");
-    }
+    const query = `
+      mutation($id: ID!) {
+        deleteApplication(id: $id)
+      }
+    `;
+    await graphqlRequest<{ deleteApplication: boolean }>(query, { id });
   },
 };

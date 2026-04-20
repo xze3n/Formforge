@@ -28,117 +28,162 @@ export async function mockApi(page: Page) {
   // Each page/test gets an isolated mutable copy
   let apps = structuredClone(seedApplications);
   let nextId = Math.max(...apps.map(a => a.id)) + 1;
+  let generatorRunning = false;
 
-  // ── GET /api/enums ──────────────────────────────────────────────
-  await page.route('**/api/enums', async (route, request) => {
-    if (request.method() === 'HEAD') {
-      return route.fulfill({ status: 200 });
-    }
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(enumValues),
-    });
-  });
-
-  // ── GET /api/applications?page=…&size=… ─────────────────────────
-  await page.route('**/api/applications?*', async (route, request) => {
-    if (request.method() !== 'GET') return route.fallback();
-    const url = new URL(request.url());
-    const pageNum = parseInt(url.searchParams.get('page') ?? '0');
-    const size = parseInt(url.searchParams.get('size') ?? '1000');
-    const start = pageNum * size;
-    const content = apps.slice(start, start + size);
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        content,
-        page: pageNum,
-        size,
-        totalElements: apps.length,
-        totalPages: Math.ceil(apps.length / size),
-      }),
-    });
-  });
-
-  // ── POST /api/applications ──────────────────────────────────────
-  await page.route('**/api/applications', async (route, request) => {
+  // ── Single GraphQL route handler ────────────────────────────────
+  await page.route('**/graphql', async (route, request) => {
     if (request.method() !== 'POST') return route.fallback();
-    const input = request.postDataJSON();
-    const now = new Date();
-    const newApp: Application = {
-      id: nextId++,
-      type: input.type,
-      academicYear: input.academicYear,
-      semester: input.semester,
-      status: input.status ?? 'Draft',
-      createdAt: `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`,
-    };
-    apps.push(newApp);
-    return route.fulfill({
-      status: 201,
-      contentType: 'application/json',
-      body: JSON.stringify(newApp),
-    });
-  });
 
-  // ── GET | PUT | DELETE /api/applications/:id ────────────────────
-  await page.route(/\/api\/applications\/(\d+)$/, async (route, request) => {
-    const id = parseInt(request.url().match(/\/api\/applications\/(\d+)/)![1]);
-    const method = request.method();
+    const body = request.postDataJSON();
+    const query: string = body.query ?? '';
+    const variables = body.variables ?? {};
 
-    if (method === 'GET') {
+    // ── Health check (__typename) ──
+    if (query.includes('__typename')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { __typename: 'Query' } }),
+      });
+    }
+
+    // ── Query: applications ──
+    if (query.includes('applications') && !query.includes('mutation')) {
+      const page = variables.page ?? 0;
+      const size = variables.size ?? 1000;
+      const start = page * size;
+      const content = apps.slice(start, start + size);
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            applications: {
+              content,
+              page,
+              size,
+              totalElements: apps.length,
+              totalPages: Math.ceil(apps.length / size),
+            },
+          },
+        }),
+      });
+    }
+
+    // ── Query: application (single by id) ──
+    if (query.includes('application(') || (query.includes('application') && variables.id !== undefined && !query.includes('applications'))) {
+      const id = Number(variables.id);
       const app = apps.find(a => a.id === id);
-      if (!app) return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'Not found' }) });
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(app) });
+      if (!app) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: null,
+            errors: [{ message: `Application with id ${id} not found`, extensions: { classification: 'NOT_FOUND' } }],
+          }),
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { application: app } }),
+      });
     }
 
-    if (method === 'PUT') {
+    // ── Query: enums ──
+    if (query.includes('enums')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { enums: enumValues } }),
+      });
+    }
+
+    // ── Query: generatorStatus ──
+    if (query.includes('generatorStatus')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { generatorStatus: { running: generatorRunning } } }),
+      });
+    }
+
+    // ── Mutation: createApplication ──
+    if (query.includes('createApplication')) {
+      const input = variables.input;
+      const now = new Date();
+      const newApp: Application = {
+        id: nextId++,
+        type: input.type,
+        academicYear: input.academicYear,
+        semester: input.semester,
+        status: input.status ?? 'Draft',
+        createdAt: `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`,
+      };
+      apps.push(newApp);
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { createApplication: newApp } }),
+      });
+    }
+
+    // ── Mutation: updateApplication ──
+    if (query.includes('updateApplication')) {
+      const id = Number(variables.id);
       const idx = apps.findIndex(a => a.id === id);
-      if (idx === -1) return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'Not found' }) });
-      const input = request.postDataJSON();
-      apps[idx] = { ...apps[idx], ...input };
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(apps[idx]) });
+      if (idx === -1) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: null,
+            errors: [{ message: `Application with id ${id} not found` }],
+          }),
+        });
+      }
+      apps[idx] = { ...apps[idx], ...variables.input };
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { updateApplication: apps[idx] } }),
+      });
     }
 
-    if (method === 'DELETE') {
+    // ── Mutation: deleteApplication ──
+    if (query.includes('deleteApplication')) {
+      const id = Number(variables.id);
       const idx = apps.findIndex(a => a.id === id);
-      if (idx === -1) return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'Not found' }) });
-      apps.splice(idx, 1);
-      return route.fulfill({ status: 204 });
+      if (idx !== -1) apps.splice(idx, 1);
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { deleteApplication: true } }),
+      });
     }
 
+    // ── Mutation: startGenerator ──
+    if (query.includes('startGenerator')) {
+      generatorRunning = true;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { startGenerator: { running: true } } }),
+      });
+    }
+
+    // ── Mutation: stopGenerator ──
+    if (query.includes('stopGenerator')) {
+      generatorRunning = false;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { stopGenerator: { running: false } } }),
+      });
+    }
+
+    // Unhandled query — pass through
     return route.fallback();
-  });
-
-  // ── POST /api/generator/start ───────────────────────────────────
-  await page.route('**/api/generator/start', async (route, request) => {
-    if (request.method() !== 'POST') return route.fallback();
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ running: true, started: true }),
-    });
-  });
-
-  // ── POST /api/generator/stop ────────────────────────────────────
-  await page.route('**/api/generator/stop', async (route, request) => {
-    if (request.method() !== 'POST') return route.fallback();
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ running: false, stopped: true }),
-    });
-  });
-
-  // ── GET /api/generator/status ───────────────────────────────────
-  await page.route('**/api/generator/status', async (route, request) => {
-    if (request.method() !== 'GET') return route.fallback();
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ running: false }),
-    });
   });
 }

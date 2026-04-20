@@ -1,3 +1,5 @@
+import { graphqlRequest } from "./graphqlClient";
+
 export interface EnumValues {
   types: string[];
   statuses: string[];
@@ -7,10 +9,12 @@ export interface EnumValues {
 
 export const enumApi = {
   async getAll(): Promise<EnumValues> {
-    const response = await fetch("/api/enums");
-    if (!response.ok) {
-      throw new Error("Failed to load enum values");
-    }
-    return response.json();
+    const query = `
+      query {
+        enums { types statuses semesters academicYears }
+      }
+    `;
+    const data = await graphqlRequest<{ enums: EnumValues }>(query);
+    return data.enums;
   },
 };

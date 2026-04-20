@@ -1,0 +1,56 @@
+type Query {
+    applications(page: Int = 0, size: Int = 5): ApplicationPage!
+    application(id: ID!): Application
+    enums: EnumValues!
+    generatorStatus: GeneratorStatus!
+}
+
+type Mutation {
+    createApplication(input: CreateApplicationInput!): Application
+    updateApplication(id: ID!, input: UpdateApplicationInput!): Application
+    deleteApplication(id: ID!): Boolean
+    startGenerator: GeneratorStatus!
+    stopGenerator: GeneratorStatus!
+}
+
+type Application {
+    id: ID!
+    type: String!
+    academicYear: String!
+    semester: String!
+    createdAt: String!
+    status: String!
+}
+
+type ApplicationPage {
+    content: [Application!]!
+    page: Int!
+    size: Int!
+    totalElements: Int!
+    totalPages: Int!
+}
+
+type EnumValues {
+    types: [String!]!
+    statuses: [String!]!
+    semesters: [String!]!
+    academicYears: [String!]!
+}
+
+type GeneratorStatus {
+    running: Boolean!
+}
+
+input CreateApplicationInput {
+    type: String!
+    academicYear: String!
+    semester: String!
+    status: String
+}
+
+input UpdateApplicationInput {
+    type: String
+    academicYear: String
+    semester: String
+    status: String
+}

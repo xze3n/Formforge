@@ -1,19 +1,33 @@
+import { graphqlRequest } from "./graphqlClient";
+
 export const generatorApi = {
-  async start(): Promise<{ running: boolean; started: boolean }> {
-    const response = await fetch("/api/generator/start", { method: "POST" });
-    if (!response.ok) throw new Error("Failed to start generator");
-    return response.json();
+  async start(): Promise<{ running: boolean }> {
+    const query = `
+      mutation {
+        startGenerator { running }
+      }
+    `;
+    const data = await graphqlRequest<{ startGenerator: { running: boolean } }>(query);
+    return data.startGenerator;
   },
 
-  async stop(): Promise<{ running: boolean; stopped: boolean }> {
-    const response = await fetch("/api/generator/stop", { method: "POST" });
-    if (!response.ok) throw new Error("Failed to stop generator");
-    return response.json();
+  async stop(): Promise<{ running: boolean }> {
+    const query = `
+      mutation {
+        stopGenerator { running }
+      }
+    `;
+    const data = await graphqlRequest<{ stopGenerator: { running: boolean } }>(query);
+    return data.stopGenerator;
   },
 
   async status(): Promise<{ running: boolean }> {
-    const response = await fetch("/api/generator/status");
-    if (!response.ok) throw new Error("Failed to get generator status");
-    return response.json();
+    const query = `
+      query {
+        generatorStatus { running }
+      }
+    `;
+    const data = await graphqlRequest<{ generatorStatus: { running: boolean } }>(query);
+    return data.generatorStatus;
   },
 };

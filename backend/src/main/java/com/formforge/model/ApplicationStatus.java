@@ -17,4 +17,16 @@ public enum ApplicationStatus {
     public String getValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return value;
+    }
+
+    public static ApplicationStatus fromValue(String value) {
+        for (ApplicationStatus s : values()) {
+            if (s.value.equalsIgnoreCase(value)) return s;
+        }
+        throw new IllegalArgumentException("Unknown ApplicationStatus: " + value);
+    }
 }

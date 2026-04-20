@@ -16,4 +16,16 @@ public enum Semester {
     public String getValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return value;
+    }
+
+    public static Semester fromValue(String value) {
+        for (Semester s : values()) {
+            if (s.value.equalsIgnoreCase(value)) return s;
+        }
+        throw new IllegalArgumentException("Unknown Semester: " + value);
+    }
 }

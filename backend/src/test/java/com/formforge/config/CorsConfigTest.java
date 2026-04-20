@@ -19,7 +19,7 @@ class CorsConfigTest {
 
     @Test
     void corsAllowsLocalhostOrigin() throws Exception {
-        mockMvc.perform(options("/api/applications")
+        mockMvc.perform(options("/graphql")
                         .header("Origin", "http://localhost:5173")
                         .header("Access-Control-Request-Method", "POST"))
                 .andExpect(status().isOk())
@@ -27,26 +27,17 @@ class CorsConfigTest {
     }
 
     @Test
-    void corsAllowsGetMethod() throws Exception {
-        mockMvc.perform(options("/api/applications")
+    void corsAllowsPostMethod() throws Exception {
+        mockMvc.perform(options("/graphql")
                         .header("Origin", "http://localhost:5173")
-                        .header("Access-Control-Request-Method", "GET"))
-                .andExpect(status().isOk())
-                .andExpect(header().exists("Access-Control-Allow-Methods"));
-    }
-
-    @Test
-    void corsAllowsDeleteMethod() throws Exception {
-        mockMvc.perform(options("/api/applications")
-                        .header("Origin", "http://localhost:5173")
-                        .header("Access-Control-Request-Method", "DELETE"))
+                        .header("Access-Control-Request-Method", "POST"))
                 .andExpect(status().isOk())
                 .andExpect(header().exists("Access-Control-Allow-Methods"));
     }
 
     @Test
     void corsRejectsUnknownOrigin() throws Exception {
-        mockMvc.perform(options("/api/applications")
+        mockMvc.perform(options("/graphql")
                         .header("Origin", "http://evil.com")
                         .header("Access-Control-Request-Method", "POST"))
                 .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));

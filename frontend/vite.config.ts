@@ -22,7 +22,7 @@ export default defineConfig({
 
   server: {
     proxy: {
-      '/api': {
+      '/graphql': {
         target: 'http://localhost:8080',
         changeOrigin: true,
         configure: (proxy) => {
