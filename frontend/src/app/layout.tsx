@@ -3,6 +3,7 @@ import { Navbar } from "./components/navbar";
 import { CookieConsentBanner } from "./components/cookies/CookieConsentBanner";
 import { CookieDashboard } from "./components/cookies/CookieDashboard";
 import { useActivityTracker } from "./hooks/useActivityTracker";
+import { OfflineBanner } from "./components/OfflineBanner";
 
 export function Layout() {
   useActivityTracker();
@@ -13,6 +14,7 @@ export function Layout() {
       <Outlet />
       <CookieConsentBanner />
       <CookieDashboard />
+      <OfflineBanner />
     </div>
   );
 }

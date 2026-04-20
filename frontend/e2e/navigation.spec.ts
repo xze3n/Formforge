@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { mockApi } from './mock-api';
 
 test.describe('Feature 1: Navigation & Responsive Layout', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockApi(page);
+  });
+
   // ── Desktop Navigation ──────────────────────────────────────────────
 
   test.describe('Desktop', () => {

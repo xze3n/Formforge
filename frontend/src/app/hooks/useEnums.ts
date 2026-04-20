@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { enumApi, EnumValues } from "../services/enumApi";
+import { offlineStorage } from "../services/offlineStorage";
 
 const defaultEnums: EnumValues = {
   types: [],
@@ -14,8 +15,15 @@ export const useEnums = () => {
 
   useEffect(() => {
     enumApi.getAll()
-      .then(setEnums)
-      .catch(() => {})
+      .then((data) => {
+        setEnums(data);
+        offlineStorage.saveEnums(data);
+      })
+      .catch(() => {
+        // Server unreachable – use cached enums
+        const cached = offlineStorage.getEnums();
+        if (cached) setEnums(cached);
+      })
       .finally(() => setLoading(false));
   }, []);
 
