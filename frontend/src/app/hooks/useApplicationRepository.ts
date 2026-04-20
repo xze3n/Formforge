@@ -164,6 +164,12 @@ export const useApplicationRepository = () => {
     return true;
   }, [clearError]);
 
+  /** Add an application to local state only (used by WebSocket push) */
+  const addFromServer = useCallback((app: Application) => {
+    dispatch({ type: "ADD_APPLICATION", payload: app });
+    offlineStorage.saveApplications([...offlineStorage.getApplications(), app]);
+  }, []);
+
   return {
     applications,
     loading,
@@ -173,6 +179,7 @@ export const useApplicationRepository = () => {
     getAll,
     getById,
     add,
+    addFromServer,
     update,
     remove,
     delete: remove,

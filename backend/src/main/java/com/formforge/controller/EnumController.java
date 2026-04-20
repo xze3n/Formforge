@@ -4,7 +4,6 @@ import com.formforge.model.ApplicationStatus;
 import com.formforge.model.ApplicationType;
 import com.formforge.model.Semester;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,7 +16,6 @@ import java.util.stream.IntStream;
 
 @RestController
 @RequestMapping("/api/enums")
-@CrossOrigin(origins = "http://localhost:5173")
 public class EnumController {
 
     @GetMapping

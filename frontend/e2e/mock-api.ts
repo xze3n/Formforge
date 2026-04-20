@@ -111,4 +111,34 @@ export async function mockApi(page: Page) {
 
     return route.fallback();
   });
+
+  // ── POST /api/generator/start ───────────────────────────────────
+  await page.route('**/api/generator/start', async (route, request) => {
+    if (request.method() !== 'POST') return route.fallback();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ running: true, started: true }),
+    });
+  });
+
+  // ── POST /api/generator/stop ────────────────────────────────────
+  await page.route('**/api/generator/stop', async (route, request) => {
+    if (request.method() !== 'POST') return route.fallback();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ running: false, stopped: true }),
+    });
+  });
+
+  // ── GET /api/generator/status ───────────────────────────────────
+  await page.route('**/api/generator/status', async (route, request) => {
+    if (request.method() !== 'GET') return route.fallback();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ running: false }),
+    });
+  });
 }

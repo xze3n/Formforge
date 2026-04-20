@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { Trash2, Plus, ChevronLeft, ChevronRight, Table as TableIcon, PieChart, LayoutGrid, Play, Square } from "lucide-react";
@@ -24,39 +24,43 @@ import {
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { useApplicationRepository } from "../hooks/useApplicationRepository";
 import { useEnums } from "../hooks/useEnums";
-import { faker } from "@faker-js/faker";
-import type { ApplicationType, ApplicationStatus } from "../types/application";
+import { useApplicationWebSocket } from "../hooks/useApplicationWebSocket";
+import { generatorApi } from "../services/generatorApi";
+import type { Application } from "../types/application";
 
 export function ScholarshipApplications() {
   const navigate = useNavigate();
-  const { applications, loading, remove, add } = useApplicationRepository();
+  const { applications, loading, remove, addFromServer } = useApplicationRepository();
   const { enums } = useEnums();
   const { preferences, setViewMode: persistViewMode, setItemsPerPage: persistItemsPerPage } = usePreferences();
   const [isPopulating, setIsPopulating] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const generateRandomApplication = useCallback(async () => {
-    if (!enums.types.length || !enums.semesters.length || !enums.statuses.length || !enums.academicYears.length) return;
-    await add({
-      type: faker.helpers.arrayElement(enums.types) as ApplicationType,
-      academicYear: faker.helpers.arrayElement(enums.academicYears),
-      semester: faker.helpers.arrayElement(enums.semesters) as "I" | "II",
-      status: faker.helpers.arrayElement(enums.statuses) as ApplicationStatus,
-    });
-  }, [add, enums]);
+  const onApplicationCreated = useCallback((app: Application) => {
+    addFromServer(app);
+  }, [addFromServer]);
 
-  const handleStartPopulating = useCallback(() => {
-    if (intervalRef.current) return;
+  const onGeneratorStopped = useCallback(() => {
+    console.log("Generator stopped signal received via WebSocket");
+    setIsPopulating(false);
+  }, []);
+
+  useApplicationWebSocket({ onApplicationCreated, onGeneratorStopped });
+
+  const handleStartPopulating = useCallback(async () => {
     setIsPopulating(true);
-    intervalRef.current = setInterval(() => {
-      generateRandomApplication();
-    }, 1000);
-  }, [generateRandomApplication]);
+    try {
+      await generatorApi.start();
+    } catch (err) {
+      console.error("Failed to start generator:", err);
+      setIsPopulating(false);
+    }
+  }, []);
 
-  const handleStopPopulating = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+  const handleStopPopulating = useCallback(async () => {
+    try {
+      await generatorApi.stop();
+    } catch {
+      // ignore
     }
     setIsPopulating(false);
   }, []);
