@@ -5,13 +5,14 @@ export interface EnumValues {
   statuses: string[];
   semesters: string[];
   academicYears: string[];
+  documentTypes: string[];
 }
 
 export const enumApi = {
   async getAll(): Promise<EnumValues> {
     const query = `
       query {
-        enums { types statuses semesters academicYears }
+        enums { types statuses semesters academicYears documentTypes }
       }
     `;
     const data = await graphqlRequest<{ enums: EnumValues }>(query);

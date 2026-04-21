@@ -18,6 +18,12 @@ public class GraphQLExceptionHandler extends DataFetcherExceptionResolverAdapter
                     .errorType(ErrorType.NOT_FOUND)
                     .build();
         }
+        if (ex instanceof DocumentNotFoundException) {
+            return GraphqlErrorBuilder.newError()
+                    .message(ex.getMessage())
+                    .errorType(ErrorType.NOT_FOUND)
+                    .build();
+        }
         if (ex instanceof IllegalArgumentException) {
             return GraphqlErrorBuilder.newError()
                     .message(ex.getMessage())

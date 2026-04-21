@@ -6,6 +6,7 @@ import com.formforge.dto.UpdateApplicationRequest;
 import com.formforge.model.Application;
 import com.formforge.model.ApplicationStatus;
 import com.formforge.model.ApplicationType;
+import com.formforge.model.DocumentType;
 import com.formforge.model.Semester;
 import com.formforge.service.ApplicationGeneratorService;
 import com.formforge.service.ApplicationService;
@@ -60,11 +61,16 @@ public class ApplicationGraphQLController {
                 .mapToObj(y -> y + "/" + (y + 1))
                 .toList();
 
+        List<String> documentTypes = Arrays.stream(DocumentType.values())
+                .map(DocumentType::getValue)
+                .toList();
+
         return Map.of(
                 "types", types,
                 "statuses", statuses,
                 "semesters", semesters,
-                "academicYears", academicYears
+                "academicYears", academicYears,
+                "documentTypes", documentTypes
         );
     }
 

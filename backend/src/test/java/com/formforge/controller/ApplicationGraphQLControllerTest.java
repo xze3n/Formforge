@@ -2,6 +2,7 @@ package com.formforge.controller;
 
 import com.formforge.model.ApplicationStatus;
 import com.formforge.model.ApplicationType;
+import com.formforge.model.DocumentType;
 import com.formforge.model.Semester;
 import com.formforge.repository.InMemoryApplicationRepository;
 import com.formforge.service.ApplicationGeneratorService;
@@ -165,6 +166,18 @@ class ApplicationGraphQLControllerTest {
                 .execute()
                 .path("enums.semesters").entityList(String.class)
                 .satisfies(semesters -> assertThat(semesters).containsExactlyInAnyOrder(expected));
+    }
+
+    @Test
+    void enums_documentTypesMatchEnum() {
+        String[] expected = Arrays.stream(DocumentType.values())
+                .map(DocumentType::getValue)
+                .toArray(String[]::new);
+
+        graphQlTester.document("{ enums { documentTypes } }")
+                .execute()
+                .path("enums.documentTypes").entityList(String.class)
+                .satisfies(types -> assertThat(types).containsExactlyInAnyOrder(expected));
     }
 
     @Test

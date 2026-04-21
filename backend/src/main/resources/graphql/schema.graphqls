@@ -1,6 +1,8 @@
 type Query {
     applications(page: Int = 0, size: Int = 5): ApplicationPage!
     application(id: ID!): Application
+    documents(applicationId: ID!): [Document!]!
+    document(id: ID!): Document
     enums: EnumValues!
     generatorStatus: GeneratorStatus!
 }
@@ -9,6 +11,9 @@ type Mutation {
     createApplication(input: CreateApplicationInput!): Application
     updateApplication(id: ID!, input: UpdateApplicationInput!): Application
     deleteApplication(id: ID!): Boolean
+    createDocument(applicationId: ID!, input: CreateDocumentInput!): Document!
+    updateDocument(id: ID!, input: UpdateDocumentInput!): Document!
+    deleteDocument(id: ID!): Boolean!
     startGenerator: GeneratorStatus!
     stopGenerator: GeneratorStatus!
 }
@@ -35,10 +40,37 @@ type EnumValues {
     statuses: [String!]!
     semesters: [String!]!
     academicYears: [String!]!
+    documentTypes: [String!]!
 }
 
 type GeneratorStatus {
     running: Boolean!
+}
+
+type Document {
+    id: ID!
+    applicationId: ID!
+    name: String!
+    type: String!
+    description: String
+    dateAdded: String!
+    verified: Boolean!
+    notes: String
+}
+
+input CreateDocumentInput {
+    name: String!
+    type: String!
+    description: String
+    notes: String
+}
+
+input UpdateDocumentInput {
+    name: String
+    type: String
+    description: String
+    notes: String
+    verified: Boolean
 }
 
 input CreateApplicationInput {

@@ -73,7 +73,7 @@ export const offlineStorage = {
 
   updateApplication(id: number, input: UpdateApplicationInput): Application | null {
     const apps = this.getApplications();
-    const idx = apps.findIndex((a) => a.id === id);
+    const idx = apps.findIndex((a) => Number(a.id) === id);
     if (idx === -1) return null;
     apps[idx] = { ...apps[idx], ...input };
     this.saveApplications(apps);
@@ -81,14 +81,14 @@ export const offlineStorage = {
   },
 
   deleteApplication(id: number) {
-    const apps = this.getApplications().filter((a) => a.id !== id);
+    const apps = this.getApplications().filter((a) => Number(a.id) !== id);
     this.saveApplications(apps);
   },
 
   /** Replace a temp ID with a real server-assigned ID */
   remapId(tempId: number, realId: number) {
     const apps = this.getApplications();
-    const idx = apps.findIndex((a) => a.id === tempId);
+    const idx = apps.findIndex((a) => Number(a.id) === tempId);
     if (idx !== -1) {
       apps[idx] = { ...apps[idx], id: realId };
       this.saveApplications(apps);

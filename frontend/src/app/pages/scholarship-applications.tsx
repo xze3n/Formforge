@@ -271,6 +271,16 @@ export function ScholarshipApplications() {
     void loadTablePage(tableCurrentPage - 1);
   }, [viewMode, tableCurrentPage, itemsPerPage, loadTablePage]);
 
+  // When statistics view is active, ensure we have a total count from the API
+  useEffect(() => {
+    if (viewMode !== "statistics") return;
+    if (cardsTotalElements > 0 || tableTotalElements > 0) return;
+    // Fetch page 0 with a large size to populate statistics
+    void applicationApi.getPage(0, 1000).then(result => {
+      setCardsTotalElements(result.totalElements);
+    }).catch(() => { /* silently ignore */ });
+  }, [viewMode, cardsTotalElements, tableTotalElements]);
+
   // Offline recovery for table: if API load failed but cache arrived later
   useEffect(() => {
     if (viewMode !== "table") return;
@@ -567,6 +577,9 @@ export function ScholarshipApplications() {
         {/* Statistics */}
         {viewMode === "statistics" && (
           <div className="space-y-6">
+            {applications.length === 0 && (
+              <p className="text-sm text-gray-500">Loading statistics…</p>
+            )}
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Total Applications Card */}
@@ -574,7 +587,9 @@ export function ScholarshipApplications() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Total Applications</p>
-                    <p className="text-3xl font-bold text-gray-900">{totalApplications}</p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {cardsTotalElements || tableTotalElements || totalApplications}
+                    </p>
                   </div>
                   <div className="size-12 bg-purple-100 flex items-center justify-center">
                     <PieChart className="size-6 text-purple-600" />
