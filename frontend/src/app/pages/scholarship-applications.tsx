@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { Trash2, Plus, ChevronLeft, ChevronRight, Table as TableIcon, PieChart, LayoutGrid, Play, Square } from "lucide-react";
@@ -26,18 +26,212 @@ import { useApplicationRepository } from "../hooks/useApplicationRepository";
 import { useEnums } from "../hooks/useEnums";
 import { useApplicationWebSocket } from "../hooks/useApplicationWebSocket";
 import { generatorApi } from "../services/generatorApi";
+import { applicationApi, type ApplicationPage } from "../services/applicationApi";
 import type { Application } from "../types/application";
+
+const mergeUniqueById = (current: Application[], incoming: Application[]): Application[] => {
+  const seen = new Set(current.map((app) => app.id));
+  const merged = [...current];
+  for (const app of incoming) {
+    if (!seen.has(app.id)) {
+      merged.push(app);
+      seen.add(app.id);
+    }
+  }
+  return merged;
+};
 
 export function ScholarshipApplications() {
   const navigate = useNavigate();
-  const { applications, loading, remove, addFromServer } = useApplicationRepository();
+  const { applications, remove, addFromServer } = useApplicationRepository();
   const { enums } = useEnums();
-  const { preferences, setViewMode: persistViewMode, setItemsPerPage: persistItemsPerPage } = usePreferences();
+  const { preferences, setViewMode: persistViewMode } = usePreferences();
   const [isPopulating, setIsPopulating] = useState(false);
+  const [tableCurrentPage, setTableCurrentPage] = useState(1);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [viewMode, setViewModeLocal] = useState<"table" | "statistics" | "cards">(preferences.viewMode);
+
+  const itemsPerPage = preferences.itemsPerPage;
+
+  // ── Table pagination state ────────────────────────────────────────────
+  const [tableApplications, setTableApplications] = useState<Application[]>([]);
+  const [tableTotalPages, setTableTotalPages] = useState(0);
+  const [tableTotalElements, setTableTotalElements] = useState(0);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [tableLoadError, setTableLoadError] = useState<string | null>(null);
+  const tablePrefetchCacheRef = useRef<Map<number, ApplicationPage>>(new Map());
+  const tablePrefetchInFlightRef = useRef<Set<number>>(new Set());
+
+  // ── Cards pagination state ────────────────────────────────────────────
+  const [cardsApplications, setCardsApplications] = useState<Application[]>([]);
+  const [cardsLastLoadedPage, setCardsLastLoadedPage] = useState(-1);
+  const [cardsTotalPages, setCardsTotalPages] = useState(0);
+  const [cardsTotalElements, setCardsTotalElements] = useState(0);
+  const [cardsInitialLoading, setCardsInitialLoading] = useState(false);
+  const [cardsAppending, setCardsAppending] = useState(false);
+  const [cardsLoadError, setCardsLoadError] = useState<string | null>(null);
+  const cardsPrefetchCacheRef = useRef<Map<number, ApplicationPage>>(new Map());
+  const cardsInFlightPagesRef = useRef<Set<number>>(new Set());
+  const cardsPrefetchInFlightRef = useRef<Set<number>>(new Set());
+  const cardsSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const cardsHasMore = cardsLastLoadedPage + 1 < cardsTotalPages;
+
+  const setViewMode = (mode: "table" | "statistics" | "cards") => {
+    setViewModeLocal(mode);
+    persistViewMode(mode);
+  };
+
+  const getPageFromLocalCache = useCallback((page: number): ApplicationPage | null => {
+    if (applications.length === 0) return null;
+    const start = page * itemsPerPage;
+    if (start >= applications.length) return null;
+    return {
+      content: applications.slice(start, start + itemsPerPage),
+      page,
+      size: itemsPerPage,
+      totalElements: applications.length,
+      totalPages: Math.ceil(applications.length / itemsPerPage),
+    };
+  }, [applications, itemsPerPage]);
+
+  const prefetchTablePage = useCallback(async (page: number, totalPages: number) => {
+    if (page < 0 || page >= totalPages) return;
+    if (tablePrefetchCacheRef.current.has(page)) return;
+    if (tablePrefetchInFlightRef.current.has(page)) return;
+    tablePrefetchInFlightRef.current.add(page);
+    try {
+      const prefetched = await applicationApi.getPage(page, itemsPerPage);
+      tablePrefetchCacheRef.current.set(page, prefetched);
+    } catch {
+      // ignore prefetch failures
+    } finally {
+      tablePrefetchInFlightRef.current.delete(page);
+    }
+  }, [itemsPerPage]);
+
+  const loadTablePage = useCallback(async (page: number) => {
+    setTableLoading(true);
+    setTableLoadError(null);
+    tablePrefetchCacheRef.current.delete(page); // consume
+    try {
+      const cached = tablePrefetchCacheRef.current.get(page);
+      const result = cached ?? await applicationApi.getPage(page, itemsPerPage);
+      setTableApplications(result.content);
+      setTableTotalPages(result.totalPages);
+      setTableTotalElements(result.totalElements);
+      // prefetch neighbours
+      void prefetchTablePage(page + 1, result.totalPages);
+      if (page > 0) void prefetchTablePage(page - 1, result.totalPages);
+    } catch {
+      const fallback = getPageFromLocalCache(page);
+      if (fallback) {
+        setTableApplications(fallback.content);
+        setTableTotalPages(fallback.totalPages);
+        setTableTotalElements(fallback.totalElements);
+      } else {
+        setTableLoadError("Failed to load applications.");
+      }
+    } finally {
+      setTableLoading(false);
+    }
+  }, [getPageFromLocalCache, itemsPerPage, prefetchTablePage]);
+
+  const resetCardsFeed = useCallback(() => {
+    setCardsApplications([]);
+    setCardsLastLoadedPage(-1);
+    setCardsTotalPages(0);
+    setCardsTotalElements(0);
+    setCardsLoadError(null);
+    cardsPrefetchCacheRef.current.clear();
+    cardsInFlightPagesRef.current.clear();
+    cardsPrefetchInFlightRef.current.clear();
+  }, []);
+
+  const getCardsPageFromLocalCache = getPageFromLocalCache;
+
+  const prefetchCardsPage = useCallback(async (page: number, totalPages: number) => {
+    if (page < 0 || page >= totalPages) return;
+    if (cardsPrefetchCacheRef.current.has(page)) return;
+    if (cardsPrefetchInFlightRef.current.has(page)) return;
+
+    cardsPrefetchInFlightRef.current.add(page);
+    try {
+      const prefetched = await applicationApi.getPage(page, itemsPerPage);
+      cardsPrefetchCacheRef.current.set(page, prefetched);
+    } catch {
+      // Ignore prefetch errors; explicit load path will surface failures.
+    } finally {
+      cardsPrefetchInFlightRef.current.delete(page);
+    }
+  }, [itemsPerPage]);
+
+  const loadNextCardsPage = useCallback(async () => {
+    const nextPage = cardsLastLoadedPage + 1;
+    if (cardsAppending || cardsInFlightPagesRef.current.has(nextPage)) return;
+    if (cardsTotalPages > 0 && nextPage >= cardsTotalPages) return;
+
+    const isInitialPage = nextPage === 0;
+    if (isInitialPage) {
+      setCardsInitialLoading(true);
+    } else {
+      setCardsAppending(true);
+    }
+    setCardsLoadError(null);
+    cardsInFlightPagesRef.current.add(nextPage);
+
+    try {
+      const cachedPage = cardsPrefetchCacheRef.current.get(nextPage);
+      if (cachedPage) {
+        cardsPrefetchCacheRef.current.delete(nextPage);
+      }
+
+      const pageResult = cachedPage ?? await applicationApi.getPage(nextPage, itemsPerPage);
+      setCardsLastLoadedPage(pageResult.page);
+      setCardsTotalPages(pageResult.totalPages);
+      setCardsTotalElements(pageResult.totalElements);
+      setCardsApplications((prev) => mergeUniqueById(prev, pageResult.content));
+
+      // Keep one page ahead ready to reduce latency and duplicate requests.
+      void prefetchCardsPage(pageResult.page + 1, pageResult.totalPages);
+    } catch {
+      const fallbackPage = getCardsPageFromLocalCache(nextPage);
+      if (fallbackPage) {
+        setCardsLastLoadedPage(fallbackPage.page);
+        setCardsTotalPages(fallbackPage.totalPages);
+        setCardsTotalElements(fallbackPage.totalElements);
+        setCardsApplications((prev) => mergeUniqueById(prev, fallbackPage.content));
+        setCardsLoadError(null);
+      } else {
+        setCardsLoadError("Failed to load applications.");
+      }
+    } finally {
+      cardsInFlightPagesRef.current.delete(nextPage);
+      if (isInitialPage) {
+        setCardsInitialLoading(false);
+      } else {
+        setCardsAppending(false);
+      }
+    }
+  }, [cardsAppending, cardsLastLoadedPage, cardsTotalPages, getCardsPageFromLocalCache, itemsPerPage, prefetchCardsPage]);
 
   const onApplicationCreated = useCallback((app: Application) => {
     addFromServer(app);
-  }, [addFromServer]);
+    if (viewMode === "table") {
+      // Invalidate prefetch cache and reload the current page so the new item appears
+      tablePrefetchCacheRef.current.clear();
+      void loadTablePage(tableCurrentPage - 1);
+    }
+    if (viewMode === "cards") {
+      setCardsApplications((prev) => mergeUniqueById(prev, [app]));
+      setCardsTotalElements((prev) => {
+        const nextTotal = prev + 1;
+        setCardsTotalPages((prevPages) => Math.max(prevPages, Math.ceil(nextTotal / itemsPerPage)));
+        return nextTotal;
+      });
+      cardsPrefetchCacheRef.current.clear();
+    }
+  }, [addFromServer, itemsPerPage, loadTablePage, tableCurrentPage, viewMode]);
 
   const onGeneratorStopped = useCallback(() => {
     console.log("Generator stopped signal received via WebSocket");
@@ -64,21 +258,99 @@ export function ScholarshipApplications() {
     }
     setIsPopulating(false);
   }, []);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [viewMode, setViewModeLocal] = useState<"table" | "statistics" | "cards">(preferences.viewMode);
-  const itemsPerPage = preferences.itemsPerPage;
 
-  const setViewMode = (mode: "table" | "statistics" | "cards") => {
-    setViewModeLocal(mode);
-    persistViewMode(mode);
-  };
+  // Table pagination — driven by API state
+  const totalPages = tableTotalPages || Math.ceil(applications.length / itemsPerPage);
+  const currentApplications = tableApplications;
 
-  // Calculate pagination
-  const totalPages = Math.ceil(applications.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentApplications = applications.slice(startIndex, endIndex);
+  // Load table page on mount and when page/itemsPerPage changes
+  useEffect(() => {
+    if (viewMode !== "table") return;
+    tablePrefetchCacheRef.current.clear();
+    tablePrefetchInFlightRef.current.clear();
+    void loadTablePage(tableCurrentPage - 1);
+  }, [viewMode, tableCurrentPage, itemsPerPage, loadTablePage]);
+
+  // Offline recovery for table: if API load failed but cache arrived later
+  useEffect(() => {
+    if (viewMode !== "table") return;
+    if (tableLoading || tableApplications.length > 0 || applications.length === 0) return;
+    const fallback = getPageFromLocalCache(tableCurrentPage - 1);
+    if (!fallback) return;
+    setTableApplications(fallback.content);
+    setTableTotalPages(fallback.totalPages);
+    setTableTotalElements(fallback.totalElements);
+  }, [applications, getPageFromLocalCache, tableApplications.length, tableCurrentPage, tableLoading, viewMode]);
+
+  useEffect(() => {
+    if (viewMode !== "cards") return;
+    resetCardsFeed();
+
+    const loadInitialCardsPage = async () => {
+      setCardsInitialLoading(true);
+      setCardsLoadError(null);
+      cardsInFlightPagesRef.current.add(0);
+      try {
+        const firstPage = await applicationApi.getPage(0, itemsPerPage);
+        setCardsApplications(firstPage.content);
+        setCardsLastLoadedPage(firstPage.page);
+        setCardsTotalPages(firstPage.totalPages);
+        setCardsTotalElements(firstPage.totalElements);
+        void prefetchCardsPage(firstPage.page + 1, firstPage.totalPages);
+      } catch {
+        const fallbackFirstPage = getCardsPageFromLocalCache(0);
+        if (fallbackFirstPage) {
+          setCardsApplications(fallbackFirstPage.content);
+          setCardsLastLoadedPage(fallbackFirstPage.page);
+          setCardsTotalPages(fallbackFirstPage.totalPages);
+          setCardsTotalElements(fallbackFirstPage.totalElements);
+          setCardsLoadError(null);
+        } else {
+          setCardsLoadError("Failed to load applications.");
+        }
+      } finally {
+        cardsInFlightPagesRef.current.delete(0);
+        setCardsInitialLoading(false);
+      }
+    };
+
+    void loadInitialCardsPage();
+  }, [viewMode, itemsPerPage, prefetchCardsPage, resetCardsFeed, getCardsPageFromLocalCache]);
+
+  useEffect(() => {
+    if (viewMode !== "cards") return;
+    if (cardsInitialLoading || cardsApplications.length > 0 || applications.length === 0) return;
+
+    const fallbackFirstPage = getCardsPageFromLocalCache(0);
+    if (!fallbackFirstPage) return;
+
+    setCardsApplications(fallbackFirstPage.content);
+    setCardsLastLoadedPage(fallbackFirstPage.page);
+    setCardsTotalPages(fallbackFirstPage.totalPages);
+    setCardsTotalElements(fallbackFirstPage.totalElements);
+    setCardsLoadError(null);
+  }, [applications, cardsApplications.length, cardsInitialLoading, getCardsPageFromLocalCache, viewMode]);
+
+  useEffect(() => {
+    if (viewMode !== "cards") return;
+    if (!cardsHasMore) return;
+
+    const target = cardsSentinelRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry?.isIntersecting && !cardsAppending) {
+          void loadNextCardsPage();
+        }
+      },
+      { rootMargin: "300px 0px" }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [viewMode, cardsHasMore, cardsAppending, loadNextCardsPage]);
 
   const handleDelete = (id: number) => {
     setDeleteId(id);
@@ -87,9 +359,23 @@ export function ScholarshipApplications() {
   const confirmDelete = async () => {
     if (deleteId === null) return;
     await remove(deleteId);
-    // Adjust current page if necessary
-    if (currentApplications.length === 1 && currentPage > 1) {
-      setCurrentPage(currentPage - 1);
+    if (viewMode === "table") {
+      // If we deleted the last item on this page, go back one page then reload
+      const newPage = tableApplications.length === 1 && tableCurrentPage > 1
+        ? tableCurrentPage - 1
+        : tableCurrentPage;
+      setTableCurrentPage(newPage);
+      tablePrefetchCacheRef.current.clear();
+      void loadTablePage(newPage - 1);
+    }
+    if (viewMode === "cards") {
+      setCardsApplications((prev) => prev.filter((app) => app.id !== deleteId));
+      setCardsTotalElements((prev) => {
+        const nextTotal = Math.max(0, prev - 1);
+        setCardsTotalPages(Math.ceil(nextTotal / itemsPerPage));
+        return nextTotal;
+      });
+      cardsPrefetchCacheRef.current.clear();
     }
     setDeleteId(null);
   };
@@ -99,7 +385,9 @@ export function ScholarshipApplications() {
   };
 
   const goToPage = (page: number) => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+    const clamped = Math.max(1, Math.min(page, totalPages));
+    setTableCurrentPage(clamped);
+    // loadTablePage is triggered by the useEffect watching tableCurrentPage
   };
 
   // Color palettes for dynamic chart data
@@ -209,7 +497,7 @@ export function ScholarshipApplications() {
 
         {/* Table */}
         {viewMode === "table" && (
-          <div className="bg-white rounded-lg shadow-lg overflow-x-auto">
+          <div className="bg-white rounded-lg shadow-lg overflow-x-auto" aria-busy={tableLoading}>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -365,9 +653,9 @@ export function ScholarshipApplications() {
 
         {/* Cards */}
         {viewMode === "cards" && (
-          <div className="overflow-x-auto pb-2">
+          <div className="overflow-x-auto pb-2 space-y-4">
             <div className="flex gap-6 md:grid md:grid-cols-2 lg:grid-cols-3">
-              {currentApplications.map((app) => (
+              {cardsApplications.map((app) => (
                 <div 
                   key={app.id} 
                   className="min-w-[300px] md:min-w-0 bg-white rounded-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
@@ -450,18 +738,39 @@ export function ScholarshipApplications() {
                 </div>
               ))}
             </div>
+
+            {cardsInitialLoading && (
+              <div className="text-sm text-gray-700">Loading applications...</div>
+            )}
+
+            {cardsLoadError && (
+              <div className="text-sm text-red-700">{cardsLoadError}</div>
+            )}
+
+            <div ref={cardsSentinelRef} className="h-1" aria-hidden="true" />
+
+            {cardsAppending && (
+              <div className="text-sm text-gray-700">Loading more applications...</div>
+            )}
+
+            {!cardsHasMore && cardsApplications.length > 0 && (
+              <div className="text-sm text-gray-700 whitespace-nowrap">
+                Showing <span className="font-medium">{cardsApplications.length}</span> of{" "}
+                <span className="font-medium">{cardsTotalElements}</span> results
+              </div>
+            )}
           </div>
         )}
 
-        {/* Pagination - Show in table and cards view */}
-        {(viewMode === "table" || viewMode === "cards") && (
+        {/* Pagination - Table view only */}
+        {viewMode === "table" && (
           <div className="mt-6 space-y-3">
             <div className="flex items-center gap-2 w-full">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => goToPage(currentPage - 1)}
-                disabled={currentPage === 1}
+                onClick={() => goToPage(tableCurrentPage - 1)}
+                disabled={tableCurrentPage === 1}
                 className="flex-1 sm:flex-none"
               >
                 <ChevronLeft className="size-4" />
@@ -473,18 +782,18 @@ export function ScholarshipApplications() {
                   let pageNum;
                   if (totalPages <= 5) {
                     pageNum = i + 1;
-                  } else if (currentPage <= 3) {
+                  } else if (tableCurrentPage <= 3) {
                     pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
+                  } else if (tableCurrentPage >= totalPages - 2) {
                     pageNum = totalPages - 4 + i;
                   } else {
-                    pageNum = currentPage - 2 + i;
+                    pageNum = tableCurrentPage - 2 + i;
                   }
                   
                   return (
                     <Button
                       key={pageNum}
-                      variant={currentPage === pageNum ? "default" : "outline"}
+                      variant={tableCurrentPage === pageNum ? "default" : "outline"}
                       size="sm"
                       onClick={() => goToPage(pageNum)}
                       className="min-w-9"
@@ -498,8 +807,8 @@ export function ScholarshipApplications() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => goToPage(currentPage + 1)}
-                disabled={currentPage >= totalPages}
+                onClick={() => goToPage(tableCurrentPage + 1)}
+                disabled={tableCurrentPage >= totalPages}
                 className="flex-1 sm:flex-none"
               >
                 Next
@@ -508,9 +817,17 @@ export function ScholarshipApplications() {
             </div>
 
             <div className="text-sm text-gray-700 whitespace-nowrap">
-              Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
-              <span className="font-medium">{Math.min(endIndex, applications.length)}</span> of{" "}
-              <span className="font-medium">{applications.length}</span> results
+              {tableLoadError
+                ? <span className="text-red-700">{tableLoadError}</span>
+                : tableLoading
+                  ? <span>Loading…</span>
+                  : <>
+                      Showing{" "}
+                      <span className="font-medium">{(tableCurrentPage - 1) * itemsPerPage + 1}</span> to{" "}
+                      <span className="font-medium">{Math.min(tableCurrentPage * itemsPerPage, tableTotalElements)}</span> of{" "}
+                      <span className="font-medium">{tableTotalElements}</span> results
+                    </>
+              }
             </div>
           </div>
         )}
