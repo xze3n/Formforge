@@ -19,10 +19,10 @@ const appsReducer = (state: Application[], action: Action): Application[] => {
       return [...state, action.payload];
     case "UPDATE_APPLICATION":
       return state.map(app =>
-        app.id === action.payload.id ? action.payload : app
+        Number(app.id) === Number(action.payload.id) ? action.payload : app
       );
     case "DELETE_APPLICATION":
-      return state.filter(app => app.id !== action.payload);
+      return state.filter(app => Number(app.id) !== Number(action.payload));
     default:
       return state;
   }

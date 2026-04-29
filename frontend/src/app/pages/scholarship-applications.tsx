@@ -370,13 +370,13 @@ export function ScholarshipApplications() {
     if (deleteId === null) return;
     await remove(deleteId);
     if (viewMode === "table") {
-      // If we deleted the last item on this page, go back one page then reload
-      const newPage = tableApplications.length === 1 && tableCurrentPage > 1
-        ? tableCurrentPage - 1
-        : tableCurrentPage;
-      setTableCurrentPage(newPage);
+      setTableApplications((prev) => prev.filter((app) => Number(app.id) !== deleteId));
+      setTableTotalElements((prev) => Math.max(0, prev - 1));
       tablePrefetchCacheRef.current.clear();
-      void loadTablePage(newPage - 1);
+      // If we just deleted the last row on this page, go back one page
+      if (tableApplications.length === 1 && tableCurrentPage > 1) {
+        setTableCurrentPage((p) => p - 1);
+      }
     }
     if (viewMode === "cards") {
       setCardsApplications((prev) => prev.filter((app) => app.id !== deleteId));
@@ -559,7 +559,7 @@ export function ScholarshipApplications() {
                         size="icon"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDelete(app.id);
+                          handleDelete(Number(app.id));
                         }}
                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
@@ -743,7 +743,7 @@ export function ScholarshipApplications() {
                       className="rounded-none"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDelete(app.id);
+                        handleDelete(Number(app.id));
                       }}
                     >
                       <Trash2 className="size-4" />

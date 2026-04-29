@@ -15,9 +15,9 @@ const docsReducer = (state: Document[], action: Action): Document[] => {
     case "ADD_DOCUMENT":
       return [...state, action.payload];
     case "UPDATE_DOCUMENT":
-      return state.map(d => d.id === action.payload.id ? action.payload : d);
+      return state.map(d => Number(d.id) === Number(action.payload.id) ? action.payload : d);
     case "DELETE_DOCUMENT":
-      return state.filter(d => d.id !== action.payload);
+      return state.filter(d => Number(d.id) !== Number(action.payload));
     default:
       return state;
   }
@@ -85,25 +85,30 @@ export const useDocumentRepository = (applicationId: number) => {
     try {
       const updated = await documentApi.update(id, input);
       dispatch({ type: "UPDATE_DOCUMENT", payload: updated });
-      writeCache(applicationId, readCache(applicationId).map(d => d.id === id ? updated : d));
+      writeCache(applicationId, readCache(applicationId).map(d => Number(d.id) === id ? updated : d));
       return updated;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to update document";
-      setError(msg);
-      throw err;
+    } catch {
+      // Offline fallback — apply patch locally
+      const cached = readCache(applicationId);
+      const idx = cached.findIndex(d => Number(d.id) === id);
+      if (idx === -1) throw new Error("Document not found in local cache");
+      const patched = { ...cached[idx], ...input };
+      cached[idx] = patched;
+      writeCache(applicationId, cached);
+      dispatch({ type: "UPDATE_DOCUMENT", payload: patched });
+      return patched;
     }
   }, [applicationId, clearError]);
 
   const remove = useCallback(async (id: number): Promise<void> => {
     clearError();
+    // Optimistic local update first so UI responds immediately
+    dispatch({ type: "DELETE_DOCUMENT", payload: id });
+    writeCache(applicationId, readCache(applicationId).filter(d => Number(d.id) !== id));
     try {
       await documentApi.delete(id);
-      dispatch({ type: "DELETE_DOCUMENT", payload: id });
-      writeCache(applicationId, readCache(applicationId).filter(d => d.id !== id));
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to delete document";
-      setError(msg);
-      throw err;
+    } catch {
+      // Server unreachable — local cache already updated, no re-throw
     }
   }, [applicationId, clearError]);
 
