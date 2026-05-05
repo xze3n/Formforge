@@ -6,6 +6,7 @@ import { Register } from "./pages/register";
 import { ScholarshipApplications } from "./pages/scholarship-applications";
 import { AddApplication } from "./pages/add-application";
 import { ApplicationDetail } from "./pages/application-detail";
+import { AdminPage } from "./pages/admin";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter([
@@ -14,15 +15,16 @@ export const router = createBrowserRouter([
     Component: Layout,
     children: [
       { index: true, Component: Home },
-      { path: "login", Component: Login },
+      { path: "login",    Component: Login },
       { path: "register", Component: Register },
+      { path: "admin",    Component: AdminPage },
       {
         // All application-related routes require authentication
         Component: ProtectedRoute,
         children: [
           { path: "scholarship-applications", Component: ScholarshipApplications },
-          { path: "add-application", Component: AddApplication },
-          { path: "application/:id", Component: ApplicationDetail },
+          { path: "add-application",          Component: AddApplication },
+          { path: "application/:id",          Component: ApplicationDetail },
         ],
       },
     ],

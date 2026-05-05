@@ -1,13 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Shield } from "lucide-react";
 import { Logo } from "./logo";
 import { useAuth } from "../hooks/useAuth";
+import { fetchUnresolvedCount } from "../services/adminService";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [threatCount, setThreatCount] = useState(0);
+
+  useEffect(() => {
+    if (user?.role !== "ADMIN") return;
+    fetchUnresolvedCount().then(r => setThreatCount(r.unresolved)).catch(() => {});
+    const id = setInterval(() => {
+      fetchUnresolvedCount().then(r => setThreatCount(r.unresolved)).catch(() => {});
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [user]);
 
   const primaryLinks = [
     { href: "/scholarship-applications", label: "Applications" },
@@ -50,6 +61,18 @@ export function Navbar() {
                   <span className="font-medium text-gray-900">{user.username}</span>
                   <span className="ml-1 text-xs bg-purple-100 text-purple-700 rounded px-1.5 py-0.5">{user.role}</span>
                 </span>
+                {user.role === "ADMIN" && (
+                  <a href="/admin"
+                    className="relative hidden sm:inline-flex items-center gap-1 text-sm px-2.5 py-1 rounded-md border border-purple-300 text-purple-700 hover:bg-purple-50 transition-colors">
+                    <Shield className="w-3.5 h-3.5" />
+                    Admin
+                    {threatCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold">
+                        {threatCount > 9 ? "9+" : threatCount}
+                      </span>
+                    )}
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={handleLogout}

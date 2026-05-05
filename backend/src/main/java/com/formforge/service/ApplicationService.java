@@ -7,6 +7,7 @@ import com.formforge.exception.ApplicationNotFoundException;
 import com.formforge.model.Application;
 import com.formforge.model.ApplicationStatus;
 import com.formforge.model.ApplicationType;
+import com.formforge.model.AuditAction;
 import com.formforge.repository.ApplicationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ public class ApplicationService {
 
     private static final Sort BY_ID = Sort.by(Sort.Direction.ASC, "id");
 
+    @Audited(action = AuditAction.READ_APPLICATIONS, resourceType = "Application")
     public PageResponse<Application> getAll(int page, int size) {
         Page<Application> jpaPage = repository.findAll(PageRequest.of(page, size, BY_ID));
         return new PageResponse<>(
@@ -37,21 +39,25 @@ public class ApplicationService {
         );
     }
 
+    @Audited(action = AuditAction.READ_APPLICATIONS, resourceType = "Application")
     public PageResponse<Application> getByStatus(ApplicationStatus status, int page, int size) {
         Page<Application> jpaPage = repository.findByStatus(status, PageRequest.of(page, size, BY_ID));
         return new PageResponse<>(jpaPage.getContent(), page, size, jpaPage.getTotalElements(), jpaPage.getTotalPages());
     }
 
+    @Audited(action = AuditAction.READ_APPLICATIONS, resourceType = "Application")
     public PageResponse<Application> getByType(ApplicationType type, int page, int size) {
         Page<Application> jpaPage = repository.findByType(type, PageRequest.of(page, size, BY_ID));
         return new PageResponse<>(jpaPage.getContent(), page, size, jpaPage.getTotalElements(), jpaPage.getTotalPages());
     }
 
+    @Audited(action = AuditAction.READ_APPLICATION, resourceType = "Application")
     public Application getById(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ApplicationNotFoundException(id));
     }
 
+    @Audited(action = AuditAction.CREATE_APPLICATION, resourceType = "Application")
     public Application create(CreateApplicationRequest request) {
         Application application = new Application();
         application.setType(request.getType());
@@ -61,6 +67,7 @@ public class ApplicationService {
         return repository.save(application);
     }
 
+    @Audited(action = AuditAction.UPDATE_APPLICATION, resourceType = "Application")
     public Application update(Long id, UpdateApplicationRequest request) {
         Application existing = repository.findById(id)
                 .orElseThrow(() -> new ApplicationNotFoundException(id));
@@ -73,6 +80,7 @@ public class ApplicationService {
         return repository.save(existing);
     }
 
+    @Audited(action = AuditAction.DELETE_APPLICATION, resourceType = "Application")
     public void delete(Long id) {
         if (!repository.existsById(id)) {
             throw new ApplicationNotFoundException(id);

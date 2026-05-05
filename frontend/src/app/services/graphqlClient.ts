@@ -8,13 +8,28 @@ export interface GraphQLResponse<T> {
   }>;
 }
 
+function userHeaders(): Record<string, string> {
+  try {
+    const raw = sessionStorage.getItem("formforge_user");
+    if (!raw) return {};
+    const user = JSON.parse(raw);
+    return {
+      "X-User-Id":   String(user.id),
+      "X-User-Name": user.username,
+      "X-User-Role": user.role,
+    };
+  } catch {
+    return {};
+  }
+}
+
 export async function graphqlRequest<T>(
   query: string,
   variables?: Record<string, unknown>
 ): Promise<T> {
   const response = await fetch(GRAPHQL_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...userHeaders() },
     body: JSON.stringify({ query, variables }),
   });
 
