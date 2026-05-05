@@ -3,12 +3,18 @@ package com.formforge.repository;
 import com.formforge.model.Application;
 import com.formforge.model.ApplicationStatus;
 import com.formforge.model.ApplicationType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
 public interface ApplicationRepository extends JpaRepository<Application, Long> {
+
+    Page<Application> findByStatus(ApplicationStatus status, Pageable pageable);
+
+    Page<Application> findByType(ApplicationType type, Pageable pageable);
 
     List<Application> findByStatus(ApplicationStatus status);
 

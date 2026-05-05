@@ -35,13 +35,13 @@ public class ApplicationService {
     }
 
     public PageResponse<Application> getByStatus(ApplicationStatus status, int page, int size) {
-        List<Application> filtered = repository.findByStatus(status);
-        return paginate(filtered, page, size);
+        Page<Application> jpaPage = repository.findByStatus(status, PageRequest.of(page, size));
+        return new PageResponse<>(jpaPage.getContent(), page, size, jpaPage.getTotalElements(), jpaPage.getTotalPages());
     }
 
     public PageResponse<Application> getByType(ApplicationType type, int page, int size) {
-        List<Application> filtered = repository.findByType(type);
-        return paginate(filtered, page, size);
+        Page<Application> jpaPage = repository.findByType(type, PageRequest.of(page, size));
+        return new PageResponse<>(jpaPage.getContent(), page, size, jpaPage.getTotalElements(), jpaPage.getTotalPages());
     }
 
     public Application getById(Long id) {
@@ -95,13 +95,5 @@ public class ApplicationService {
             map.put(row[0].toString(), (Long) row[1]);
         }
         return map;
-    }
-
-    private PageResponse<Application> paginate(List<Application> list, int page, int size) {
-        long total = list.size();
-        int totalPages = size > 0 ? (int) Math.ceil((double) total / size) : 0;
-        int from = page * size;
-        List<Application> content = from >= list.size() ? List.of() : list.subList(from, Math.min(from + size, list.size()));
-        return new PageResponse<>(content, page, size, total, totalPages);
     }
 }
