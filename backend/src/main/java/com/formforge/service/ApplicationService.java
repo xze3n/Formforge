@@ -11,6 +11,7 @@ import com.formforge.repository.ApplicationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
@@ -23,8 +24,10 @@ public class ApplicationService {
 
     private final ApplicationRepository repository;
 
+    private static final Sort BY_ID = Sort.by(Sort.Direction.ASC, "id");
+
     public PageResponse<Application> getAll(int page, int size) {
-        Page<Application> jpaPage = repository.findAll(PageRequest.of(page, size));
+        Page<Application> jpaPage = repository.findAll(PageRequest.of(page, size, BY_ID));
         return new PageResponse<>(
                 jpaPage.getContent(),
                 page,
@@ -35,12 +38,12 @@ public class ApplicationService {
     }
 
     public PageResponse<Application> getByStatus(ApplicationStatus status, int page, int size) {
-        Page<Application> jpaPage = repository.findByStatus(status, PageRequest.of(page, size));
+        Page<Application> jpaPage = repository.findByStatus(status, PageRequest.of(page, size, BY_ID));
         return new PageResponse<>(jpaPage.getContent(), page, size, jpaPage.getTotalElements(), jpaPage.getTotalPages());
     }
 
     public PageResponse<Application> getByType(ApplicationType type, int page, int size) {
-        Page<Application> jpaPage = repository.findByType(type, PageRequest.of(page, size));
+        Page<Application> jpaPage = repository.findByType(type, PageRequest.of(page, size, BY_ID));
         return new PageResponse<>(jpaPage.getContent(), page, size, jpaPage.getTotalElements(), jpaPage.getTotalPages());
     }
 

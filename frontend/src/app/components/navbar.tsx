@@ -1,9 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { Menu, X } from "lucide-react";
 import { Logo } from "./logo";
+import { useAuth } from "../hooks/useAuth";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const primaryLinks = [
     { href: "/scholarship-applications", label: "Applications" },
@@ -11,6 +15,11 @@ export function Navbar() {
     { href: "/personal-info", label: "Personal Info" },
     { href: "/documents", label: "Documents" },
   ];
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <nav className="border-b bg-white relative overflow-x-clip">
@@ -33,20 +42,38 @@ export function Navbar() {
             </div>
           </div>
 
-          {/* Right side - Login and Register */}
+          {/* Right side - auth controls */}
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            <a
-              href="/login"
-              className="inline text-gray-700 hover:text-purple-600 transition-colors text-base sm:text-base px-2 py-1 rounded-md"
-            >
-              Login
-            </a>
-            <a 
-              href="/register" 
-              className="hidden md:inline bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              Register
-            </a>
+            {user ? (
+              <>
+                <span className="hidden sm:inline text-sm text-gray-600">
+                  <span className="font-medium text-gray-900">{user.username}</span>
+                  <span className="ml-1 text-xs bg-purple-100 text-purple-700 rounded px-1.5 py-0.5">{user.role}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline text-gray-700 hover:text-red-600 transition-colors text-sm px-2 py-1 rounded-md border border-gray-200 hover:border-red-300"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <a
+                  href="/login"
+                  className="inline text-gray-700 hover:text-purple-600 transition-colors text-base sm:text-base px-2 py-1 rounded-md"
+                >
+                  Login
+                </a>
+                <a
+                  href="/register"
+                  className="hidden md:inline bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Register
+                </a>
+              </>
+            )}
             <button
               type="button"
               className="md:hidden inline-flex items-center justify-center rounded-lg border border-gray-200 p-2 text-gray-700 hover:text-purple-600 hover:border-purple-300 transition-colors"
@@ -74,13 +101,23 @@ export function Navbar() {
                 </a>
               ))}
               <div className="my-1 h-px bg-gray-100" />
-              <a
-                href="/register"
-                className="px-2 py-2 rounded-md text-sm font-medium text-purple-700 hover:text-purple-800 hover:bg-purple-50 transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Register
-              </a>
+              {user ? (
+                <button
+                  type="button"
+                  onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                  className="px-2 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left"
+                >
+                  Logout ({user.username})
+                </button>
+              ) : (
+                <a
+                  href="/register"
+                  className="px-2 py-2 rounded-md text-sm font-medium text-purple-700 hover:text-purple-800 hover:bg-purple-50 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Register
+                </a>
+              )}
             </div>
           </div>
         )}

@@ -45,6 +45,10 @@ public class Application {
     @Column(nullable = false)
     private ApplicationStatus status;
 
+    /** FK to the user who owns this application (nullable for legacy rows). */
+    @Column(name = "owner_id")
+    private Long ownerId;
+
     @PrePersist
     void prePersist() {
         if (createdAt == null) {

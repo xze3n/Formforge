@@ -1,17 +1,25 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Checkbox } from "../components/ui/checkbox";
+import { useAuth } from "../hooks/useAuth";
 
 export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const { login, loading, error } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log("Login attempt:", { email, password, rememberMe });
+    try {
+      await login({ email, password });
+      navigate("/scholarship-applications", { replace: true });
+    } catch {
+      // error is already set in useAuth
+    }
   };
 
   return (
@@ -26,6 +34,13 @@ export function Login() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Error message */}
+            {error && (
+              <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
             {/* Email Field */}
             <div className="space-y-2">
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -72,8 +87,8 @@ export function Login() {
             </div>
 
             {/* Login Button */}
-            <Button type="submit" className="w-full" size="lg">
-              Login
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              {loading ? "Signing in…" : "Login"}
             </Button>
 
             {/* Register Link */}

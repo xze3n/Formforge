@@ -1,24 +1,36 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
+import { useAuth } from "../hooks/useAuth";
 
 export function Register() {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [localError, setLocalError] = useState<string | null>(null);
+  const { register, loading, error } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check if passwords match
+    setLocalError(null);
+
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+      setLocalError("Passwords do not match");
       return;
     }
-    
-    // Handle register logic here
-    console.log("Register attempt:", { email, password });
+
+    try {
+      await register({ username, email, password });
+      navigate("/scholarship-applications", { replace: true });
+    } catch {
+      // error is already set in useAuth
+    }
   };
+
+  const displayError = localError ?? error;
 
   return (
     <main className="flex-1 flex items-center justify-center bg-gradient-to-tr from-purple-50 via-purple-100 to-yellow-50 py-8">
@@ -32,6 +44,28 @@ export function Register() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Error message */}
+            {displayError && (
+              <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                {displayError}
+              </div>
+            )}
+
+            {/* Username Field */}
+            <div className="space-y-2">
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Username
+              </label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="Choose a username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
+
             {/* Email Field */}
             <div className="space-y-2">
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -78,8 +112,8 @@ export function Register() {
             </div>
 
             {/* Register Button */}
-            <Button type="submit" className="w-full" size="lg">
-              Register
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              {loading ? "Creating account…" : "Register"}
             </Button>
 
             {/* Login Link */}
