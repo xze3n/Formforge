@@ -2,6 +2,7 @@ package com.formforge.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.formforge.model.Application;
+import java.lang.reflect.Field;
 import com.formforge.model.ApplicationStatus;
 import com.formforge.model.ApplicationType;
 import com.formforge.model.Semester;
@@ -23,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 class ApplicationWebSocketHandlerTest {
 
@@ -60,7 +63,7 @@ class ApplicationWebSocketHandlerTest {
         handler.afterConnectionEstablished(session);
 
         Application app = new Application(1L, ApplicationType.MERIT, "2025/2026",
-                Semester.I, "4/20/2026", ApplicationStatus.DRAFT);
+                Semester.I, "4/20/2026", ApplicationStatus.DRAFT, null);
 
         handler.broadcastNewApplication(app);
 
@@ -139,6 +142,23 @@ class ApplicationWebSocketHandlerTest {
 
         assertDoesNotThrow(() -> handler.broadcastGeneratorStopped());
         assertEquals(1, goodSession.messages.size());
+    }
+
+    @Test
+    void broadcast_serializeError_doesNotCrash() throws Exception {
+        FakeSession session = new FakeSession("s1");
+        handler.afterConnectionEstablished(session);
+
+        ObjectMapper broken = org.mockito.Mockito.mock(ObjectMapper.class);
+        when(broken.writeValueAsString(any())).thenThrow(
+                new com.fasterxml.jackson.core.JsonProcessingException("fail") {});
+        Field f = ApplicationWebSocketHandler.class.getDeclaredField("objectMapper");
+        f.setAccessible(true);
+        f.set(handler, broken);
+
+        assertDoesNotThrow(() -> handler.broadcastGeneratorStopped());
+        // session received no new message (serialize failed before send)
+        assertEquals(0, session.messages.size());
     }
 
     // ── Simple fake WebSocketSession for testing ──────────────────────

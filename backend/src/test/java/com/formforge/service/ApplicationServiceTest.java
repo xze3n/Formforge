@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +33,7 @@ class ApplicationServiceTest {
     @Mock
     private ApplicationRepository repository;
 
+    private static final Sort BY_ID = Sort.by(Sort.Direction.ASC, "id");
     private ApplicationService service;
 
     @BeforeEach
@@ -44,7 +46,7 @@ class ApplicationServiceTest {
     @Test
     void getAll_emptyRepository() {
         Page<Application> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 5), 0);
-        when(repository.findAll(PageRequest.of(0, 5))).thenReturn(emptyPage);
+        when(repository.findAll(PageRequest.of(0, 5, BY_ID))).thenReturn(emptyPage);
 
         PageResponse<Application> response = service.getAll(0, 5);
 
@@ -57,7 +59,7 @@ class ApplicationServiceTest {
     void getAll_firstPage() {
         List<Application> apps = buildApplications(5);
         Page<Application> page = new PageImpl<>(apps, PageRequest.of(0, 5), 8);
-        when(repository.findAll(PageRequest.of(0, 5))).thenReturn(page);
+        when(repository.findAll(PageRequest.of(0, 5, BY_ID))).thenReturn(page);
 
         PageResponse<Application> response = service.getAll(0, 5);
 
@@ -72,7 +74,7 @@ class ApplicationServiceTest {
     void getAll_lastPage() {
         List<Application> apps = buildApplications(3);
         Page<Application> page = new PageImpl<>(apps, PageRequest.of(1, 5), 8);
-        when(repository.findAll(PageRequest.of(1, 5))).thenReturn(page);
+        when(repository.findAll(PageRequest.of(1, 5, BY_ID))).thenReturn(page);
 
         PageResponse<Application> response = service.getAll(1, 5);
 
@@ -83,7 +85,7 @@ class ApplicationServiceTest {
     @Test
     void getAll_pageOutOfRange() {
         Page<Application> emptyPage = new PageImpl<>(List.of(), PageRequest.of(5, 5), 3);
-        when(repository.findAll(PageRequest.of(5, 5))).thenReturn(emptyPage);
+        when(repository.findAll(PageRequest.of(5, 5, BY_ID))).thenReturn(emptyPage);
 
         PageResponse<Application> response = service.getAll(5, 5);
 
@@ -95,7 +97,7 @@ class ApplicationServiceTest {
     void getAll_singleItemPerPage() {
         List<Application> apps = buildApplications(1);
         Page<Application> page = new PageImpl<>(apps, PageRequest.of(0, 1), 3);
-        when(repository.findAll(PageRequest.of(0, 1))).thenReturn(page);
+        when(repository.findAll(PageRequest.of(0, 1, BY_ID))).thenReturn(page);
 
         PageResponse<Application> response = service.getAll(0, 1);
 
@@ -107,7 +109,7 @@ class ApplicationServiceTest {
     void getAll_exactlyOnePage() {
         List<Application> apps = buildApplications(5);
         Page<Application> page = new PageImpl<>(apps, PageRequest.of(0, 5), 5);
-        when(repository.findAll(PageRequest.of(0, 5))).thenReturn(page);
+        when(repository.findAll(PageRequest.of(0, 5, BY_ID))).thenReturn(page);
 
         PageResponse<Application> response = service.getAll(0, 5);
 
@@ -122,19 +124,19 @@ class ApplicationServiceTest {
     @Test
     void getByStatus_returnsFilteredPage() {
         Page<Application> page = new PageImpl<>(buildApplications(3), PageRequest.of(0, 5), 3);
-        when(repository.findByStatus(ApplicationStatus.APPROVED, PageRequest.of(0, 5))).thenReturn(page);
+        when(repository.findByStatus(ApplicationStatus.APPROVED, PageRequest.of(0, 5, BY_ID))).thenReturn(page);
 
         PageResponse<Application> response = service.getByStatus(ApplicationStatus.APPROVED, 0, 5);
 
         assertEquals(3, response.getTotalElements());
         assertEquals(3, response.getContent().size());
-        verify(repository).findByStatus(ApplicationStatus.APPROVED, PageRequest.of(0, 5));
+        verify(repository).findByStatus(ApplicationStatus.APPROVED, PageRequest.of(0, 5, BY_ID));
     }
 
     @Test
     void getByStatus_empty() {
         Page<Application> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 5), 0);
-        when(repository.findByStatus(ApplicationStatus.DRAFT, PageRequest.of(0, 5))).thenReturn(emptyPage);
+        when(repository.findByStatus(ApplicationStatus.DRAFT, PageRequest.of(0, 5, BY_ID))).thenReturn(emptyPage);
 
         PageResponse<Application> response = service.getByStatus(ApplicationStatus.DRAFT, 0, 5);
 
@@ -146,8 +148,8 @@ class ApplicationServiceTest {
     void getByStatus_paginatesResults() {
         Page<Application> page0 = new PageImpl<>(buildApplications(5), PageRequest.of(0, 5), 8);
         Page<Application> page1 = new PageImpl<>(buildApplications(3), PageRequest.of(1, 5), 8);
-        when(repository.findByStatus(ApplicationStatus.APPROVED, PageRequest.of(0, 5))).thenReturn(page0);
-        when(repository.findByStatus(ApplicationStatus.APPROVED, PageRequest.of(1, 5))).thenReturn(page1);
+        when(repository.findByStatus(ApplicationStatus.APPROVED, PageRequest.of(0, 5, BY_ID))).thenReturn(page0);
+        when(repository.findByStatus(ApplicationStatus.APPROVED, PageRequest.of(1, 5, BY_ID))).thenReturn(page1);
 
         PageResponse<Application> response0 = service.getByStatus(ApplicationStatus.APPROVED, 0, 5);
         PageResponse<Application> response1 = service.getByStatus(ApplicationStatus.APPROVED, 1, 5);
@@ -163,19 +165,19 @@ class ApplicationServiceTest {
     @Test
     void getByType_returnsFilteredPage() {
         Page<Application> page = new PageImpl<>(buildApplications(2), PageRequest.of(0, 5), 2);
-        when(repository.findByType(ApplicationType.MERIT, PageRequest.of(0, 5))).thenReturn(page);
+        when(repository.findByType(ApplicationType.MERIT, PageRequest.of(0, 5, BY_ID))).thenReturn(page);
 
         PageResponse<Application> response = service.getByType(ApplicationType.MERIT, 0, 5);
 
         assertEquals(2, response.getTotalElements());
         assertEquals(2, response.getContent().size());
-        verify(repository).findByType(ApplicationType.MERIT, PageRequest.of(0, 5));
+        verify(repository).findByType(ApplicationType.MERIT, PageRequest.of(0, 5, BY_ID));
     }
 
     @Test
     void getByType_empty() {
         Page<Application> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 5), 0);
-        when(repository.findByType(ApplicationType.PERFORMANCE, PageRequest.of(0, 5))).thenReturn(emptyPage);
+        when(repository.findByType(ApplicationType.PERFORMANCE, PageRequest.of(0, 5, BY_ID))).thenReturn(emptyPage);
 
         PageResponse<Application> response = service.getByType(ApplicationType.PERFORMANCE, 0, 5);
 
@@ -188,9 +190,9 @@ class ApplicationServiceTest {
         Page<Application> page0 = new PageImpl<>(buildApplications(3), PageRequest.of(0, 3), 7);
         Page<Application> page1 = new PageImpl<>(buildApplications(3), PageRequest.of(1, 3), 7);
         Page<Application> page2 = new PageImpl<>(buildApplications(1), PageRequest.of(2, 3), 7);
-        when(repository.findByType(ApplicationType.SOCIAL, PageRequest.of(0, 3))).thenReturn(page0);
-        when(repository.findByType(ApplicationType.SOCIAL, PageRequest.of(1, 3))).thenReturn(page1);
-        when(repository.findByType(ApplicationType.SOCIAL, PageRequest.of(2, 3))).thenReturn(page2);
+        when(repository.findByType(ApplicationType.SOCIAL, PageRequest.of(0, 3, BY_ID))).thenReturn(page0);
+        when(repository.findByType(ApplicationType.SOCIAL, PageRequest.of(1, 3, BY_ID))).thenReturn(page1);
+        when(repository.findByType(ApplicationType.SOCIAL, PageRequest.of(2, 3, BY_ID))).thenReturn(page2);
 
         PageResponse<Application> response0 = service.getByType(ApplicationType.SOCIAL, 0, 3);
         PageResponse<Application> response1 = service.getByType(ApplicationType.SOCIAL, 1, 3);

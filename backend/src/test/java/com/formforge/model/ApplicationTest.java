@@ -20,7 +20,7 @@ class ApplicationTest {
     @Test
     void allArgsConstructor() {
         Application app = new Application(1L, ApplicationType.MERIT, "2025/2026",
-                Semester.I, "4/20/2026", ApplicationStatus.DRAFT);
+                Semester.I, "4/20/2026", ApplicationStatus.DRAFT, null);
 
         assertEquals(1L, app.getId());
         assertEquals(ApplicationType.MERIT, app.getType());
@@ -51,9 +51,9 @@ class ApplicationTest {
     @Test
     void equalsAndHashCode() {
         Application app1 = new Application(1L, ApplicationType.MERIT, "2025/2026",
-                Semester.I, "4/20/2026", ApplicationStatus.DRAFT);
+                Semester.I, "4/20/2026", ApplicationStatus.DRAFT, null);
         Application app2 = new Application(1L, ApplicationType.MERIT, "2025/2026",
-                Semester.I, "4/20/2026", ApplicationStatus.DRAFT);
+                Semester.I, "4/20/2026", ApplicationStatus.DRAFT, null);
 
         assertEquals(app1, app2);
         assertEquals(app1.hashCode(), app2.hashCode());
@@ -62,9 +62,9 @@ class ApplicationTest {
     @Test
     void notEquals() {
         Application app1 = new Application(1L, ApplicationType.MERIT, "2025/2026",
-                Semester.I, "4/20/2026", ApplicationStatus.DRAFT);
+                Semester.I, "4/20/2026", ApplicationStatus.DRAFT, null);
         Application app2 = new Application(2L, ApplicationType.SOCIAL, "2024/2025",
-                Semester.II, "1/1/2025", ApplicationStatus.APPROVED);
+                Semester.II, "1/1/2025", ApplicationStatus.APPROVED, null);
 
         assertNotEquals(app1, app2);
     }
@@ -72,7 +72,7 @@ class ApplicationTest {
     @Test
     void toStringContainsFields() {
         Application app = new Application(1L, ApplicationType.MERIT, "2025/2026",
-                Semester.I, "4/20/2026", ApplicationStatus.DRAFT);
+                Semester.I, "4/20/2026", ApplicationStatus.DRAFT, null);
         String str = app.toString();
 
         assertTrue(str.contains("1"));
