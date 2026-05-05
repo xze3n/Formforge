@@ -32,7 +32,18 @@ public class ApplicationGraphQLController {
     // ── Queries ────────────────────────────────────────────────────────
 
     @QueryMapping
-    public PageResponse<Application> applications(@Argument int page, @Argument int size) {
+    public PageResponse<Application> applications(
+            @Argument int page,
+            @Argument int size,
+            @Argument(name = "status") String status,
+            @Argument(name = "type") String type) {
+
+        if (status != null && !status.isBlank()) {
+            return applicationService.getByStatus(ApplicationStatus.fromValue(status), page, size);
+        }
+        if (type != null && !type.isBlank()) {
+            return applicationService.getByType(ApplicationType.fromValue(type), page, size);
+        }
         return applicationService.getAll(page, size);
     }
 
@@ -79,6 +90,16 @@ public class ApplicationGraphQLController {
         return Map.of("running", generatorService.isRunning());
     }
 
+    @QueryMapping
+    public ApplicationStats statistics() {
+        Map<String, Map<String, Long>> raw = applicationService.getStatistics();
+        return new ApplicationStats(
+                toStatEntries(raw.get("byStatus")),
+                toStatEntries(raw.get("byType")),
+                toStatEntries(raw.get("bySemester"))
+        );
+    }
+
     // ── Mutations ──────────────────────────────────────────────────────
 
     @MutationMapping
@@ -123,7 +144,7 @@ public class ApplicationGraphQLController {
         return Map.of("running", false);
     }
 
-    // ── Validation ───────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────
 
     private void validateAcademicYear(String academicYear) {
         if (!academicYear.matches("^\\d{4}/\\d{4}$")) {
@@ -131,8 +152,17 @@ public class ApplicationGraphQLController {
         }
     }
 
-    // ── Input record types ─────────────────────────────────────────────
+    private List<StatEntry> toStatEntries(Map<String, Long> map) {
+        if (map == null) return List.of();
+        return map.entrySet().stream()
+                .map(e -> new StatEntry(e.getKey(), e.getValue()))
+                .toList();
+    }
+
+    // ── Inner record types ─────────────────────────────────────────────
 
     public record CreateApplicationInput(String type, String academicYear, String semester, String status) {}
     public record UpdateApplicationInput(String type, String academicYear, String semester, String status) {}
+    public record StatEntry(String key, Long count) {}
+    public record ApplicationStats(List<StatEntry> byStatus, List<StatEntry> byType, List<StatEntry> bySemester) {}
 }

@@ -1,8 +1,7 @@
 package com.formforge.service;
 
 import com.formforge.model.Application;
-import com.formforge.repository.InMemoryApplicationRepository;
-import com.formforge.websocket.ApplicationWebSocketHandler;
+import com.formforge.repository.ApplicationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,12 +19,12 @@ class ApplicationGeneratorServiceTest {
     private ApplicationGeneratorService generatorService;
 
     @Autowired
-    private InMemoryApplicationRepository repository;
+    private ApplicationRepository repository;
 
     @BeforeEach
     void setUp() {
         generatorService.stop();
-        repository.clear();
+        repository.deleteAll();
     }
 
     @Test

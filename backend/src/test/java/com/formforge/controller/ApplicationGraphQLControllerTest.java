@@ -4,7 +4,7 @@ import com.formforge.model.ApplicationStatus;
 import com.formforge.model.ApplicationType;
 import com.formforge.model.DocumentType;
 import com.formforge.model.Semester;
-import com.formforge.repository.InMemoryApplicationRepository;
+import com.formforge.repository.ApplicationRepository;
 import com.formforge.service.ApplicationGeneratorService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ class ApplicationGraphQLControllerTest {
     private GraphQlTester graphQlTester;
 
     @Autowired
-    private InMemoryApplicationRepository repository;
+    private ApplicationRepository repository;
 
     @Autowired
     private ApplicationGeneratorService generatorService;
@@ -36,7 +36,7 @@ class ApplicationGraphQLControllerTest {
     @BeforeEach
     void setUp() {
         graphQlTester = ExecutionGraphQlServiceTester.create(graphQlService);
-        repository.clear();
+        repository.deleteAll();
         generatorService.stop();
     }
 
@@ -401,6 +401,56 @@ class ApplicationGraphQLControllerTest {
         graphQlTester.document("mutation { stopGenerator { running } }")
                 .execute()
                 .path("stopGenerator.running").entity(Boolean.class).isEqualTo(false);
+    }
+
+    // ── Query: statistics ──────────────────────────────────────────────
+
+    @Test
+    void statistics_emptyDatabase_returnsEmptyLists() {
+        graphQlTester.document("{ statistics { byStatus { key count } byType { key count } bySemester { key count } } }")
+                .execute()
+                .path("statistics.byStatus").entityList(Object.class).hasSize(0)
+                .path("statistics.byType").entityList(Object.class).hasSize(0)
+                .path("statistics.bySemester").entityList(Object.class).hasSize(0);
+    }
+
+    @Test
+    void statistics_withData_returnsCorrectCounts() {
+        createAndGetId("Merit", "2025/2026", "I", "Approved");
+        createAndGetId("Social", "2024/2025", "II", "Approved");
+        createAndGetId("Performance", "2023/2024", "I", "Draft");
+
+        graphQlTester.document("{ statistics { byStatus { key count } byType { key count } bySemester { key count } } }")
+                .execute()
+                .path("statistics.byStatus").entityList(Object.class).hasSizeGreaterThan(0)
+                .path("statistics.byType").entityList(Object.class).hasSizeGreaterThan(0)
+                .path("statistics.bySemester").entityList(Object.class).hasSizeGreaterThan(0);
+    }
+
+    // ── Query: applications with filters ──────────────────────────────
+
+    @Test
+    void applications_filteredByStatus_returnsMatchingOnly() {
+        createAndGetId("Merit", "2025/2026", "I", "Approved");
+        createAndGetId("Social", "2024/2025", "II", "Draft");
+        createAndGetId("Performance", "2023/2024", "I", "Approved");
+
+        graphQlTester.document("{ applications(page: 0, size: 10, status: \"Approved\") { content { id status } totalElements } }")
+                .execute()
+                .path("applications.totalElements").entity(Integer.class).isEqualTo(2)
+                .path("applications.content[0].status").entity(String.class).isEqualTo("Approved");
+    }
+
+    @Test
+    void applications_filteredByType_returnsMatchingOnly() {
+        createAndGetId("Merit", "2025/2026", "I", null);
+        createAndGetId("Merit", "2024/2025", "II", null);
+        createAndGetId("Social", "2023/2024", "I", null);
+
+        graphQlTester.document("{ applications(page: 0, size: 10, type: \"Merit\") { content { id type } totalElements } }")
+                .execute()
+                .path("applications.totalElements").entity(Integer.class).isEqualTo(2)
+                .path("applications.content[0].type").entity(String.class).isEqualTo("Merit");
     }
 
     // ── helpers ────────────────────────────────────────────────────────

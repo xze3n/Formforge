@@ -4,7 +4,7 @@ import com.formforge.dto.CreateDocumentRequest;
 import com.formforge.dto.UpdateDocumentRequest;
 import com.formforge.exception.DocumentNotFoundException;
 import com.formforge.model.Document;
-import com.formforge.repository.InMemoryDocumentRepository;
+import com.formforge.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +14,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DocumentService {
 
-    private final InMemoryDocumentRepository repository;
+    private final DocumentRepository repository;
 
     public List<Document> getByApplicationId(Long applicationId) {
         return repository.findByApplicationId(applicationId);
@@ -50,8 +50,9 @@ public class DocumentService {
     }
 
     public void delete(Long id) {
-        if (!repository.deleteById(id)) {
+        if (!repository.existsById(id)) {
             throw new DocumentNotFoundException(id);
         }
+        repository.deleteById(id);
     }
 }

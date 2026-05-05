@@ -1,6 +1,7 @@
 package com.formforge.controller;
 
-import com.formforge.repository.InMemoryDocumentRepository;
+import com.formforge.repository.ApplicationRepository;
+import com.formforge.repository.DocumentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,14 +17,18 @@ class DocumentGraphQLControllerTest {
     private ExecutionGraphQlService graphQlService;
 
     @Autowired
-    private InMemoryDocumentRepository documentRepository;
+    private DocumentRepository documentRepository;
+
+    @Autowired
+    private ApplicationRepository applicationRepository;
 
     private GraphQlTester graphQlTester;
 
     @BeforeEach
     void setUp() {
         graphQlTester = ExecutionGraphQlServiceTester.create(graphQlService);
-        documentRepository.clear();
+        documentRepository.deleteAll();
+        applicationRepository.deleteAll();
     }
 
     // ── Query: documents ───────────────────────────────────────────────

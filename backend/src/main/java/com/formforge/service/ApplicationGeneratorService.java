@@ -4,7 +4,7 @@ import com.formforge.model.Application;
 import com.formforge.model.ApplicationStatus;
 import com.formforge.model.ApplicationType;
 import com.formforge.model.Semester;
-import com.formforge.repository.InMemoryApplicationRepository;
+import com.formforge.repository.ApplicationRepository;
 import com.formforge.websocket.ApplicationWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RequiredArgsConstructor
 public class ApplicationGeneratorService {
 
-    private final InMemoryApplicationRepository repository;
+    private final ApplicationRepository repository;
     private final ApplicationWebSocketHandler webSocketHandler;
     private final Faker faker = new Faker();
     private final AtomicBoolean running = new AtomicBoolean(false);

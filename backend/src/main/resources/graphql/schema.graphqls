@@ -1,10 +1,11 @@
 type Query {
-    applications(page: Int = 0, size: Int = 5): ApplicationPage!
+    applications(page: Int = 0, size: Int = 5, status: String, type: String): ApplicationPage!
     application(id: ID!): Application
     documents(applicationId: ID!): [Document!]!
     document(id: ID!): Document
     enums: EnumValues!
     generatorStatus: GeneratorStatus!
+    statistics: ApplicationStats!
 }
 
 type Mutation {
@@ -85,4 +86,15 @@ input UpdateApplicationInput {
     academicYear: String
     semester: String
     status: String
+}
+
+type ApplicationStats {
+    byStatus: [StatEntry!]!
+    byType: [StatEntry!]!
+    bySemester: [StatEntry!]!
+}
+
+type StatEntry {
+    key: String!
+    count: Int!
 }

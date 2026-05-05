@@ -5,34 +5,43 @@ import com.formforge.dto.PageResponse;
 import com.formforge.dto.UpdateApplicationRequest;
 import com.formforge.exception.ApplicationNotFoundException;
 import com.formforge.model.Application;
-import com.formforge.repository.InMemoryApplicationRepository;
+import com.formforge.model.ApplicationStatus;
+import com.formforge.model.ApplicationType;
+import com.formforge.repository.ApplicationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class ApplicationService {
 
-    private final InMemoryApplicationRepository repository;
+    private final ApplicationRepository repository;
 
     public PageResponse<Application> getAll(int page, int size) {
-        List<Application> all = repository.findAll();
-        long totalElements = all.size();
-        int totalPages = (int) Math.ceil((double) totalElements / size);
+        Page<Application> jpaPage = repository.findAll(PageRequest.of(page, size));
+        return new PageResponse<>(
+                jpaPage.getContent(),
+                page,
+                size,
+                jpaPage.getTotalElements(),
+                jpaPage.getTotalPages()
+        );
+    }
 
-        int fromIndex = page * size;
-        int toIndex = Math.min(fromIndex + size, all.size());
+    public PageResponse<Application> getByStatus(ApplicationStatus status, int page, int size) {
+        List<Application> filtered = repository.findByStatus(status);
+        return paginate(filtered, page, size);
+    }
 
-        List<Application> content;
-        if (fromIndex >= all.size()) {
-            content = List.of();
-        } else {
-            content = all.subList(fromIndex, toIndex);
-        }
-
-        return new PageResponse<>(content, page, size, totalElements, totalPages);
+    public PageResponse<Application> getByType(ApplicationType type, int page, int size) {
+        List<Application> filtered = repository.findByType(type);
+        return paginate(filtered, page, size);
     }
 
     public Application getById(Long id) {
@@ -53,25 +62,46 @@ public class ApplicationService {
         Application existing = repository.findById(id)
                 .orElseThrow(() -> new ApplicationNotFoundException(id));
 
-        if (request.getType() != null) {
-            existing.setType(request.getType());
-        }
-        if (request.getAcademicYear() != null) {
-            existing.setAcademicYear(request.getAcademicYear());
-        }
-        if (request.getSemester() != null) {
-            existing.setSemester(request.getSemester());
-        }
-        if (request.getStatus() != null) {
-            existing.setStatus(request.getStatus());
-        }
+        if (request.getType() != null) existing.setType(request.getType());
+        if (request.getAcademicYear() != null) existing.setAcademicYear(request.getAcademicYear());
+        if (request.getSemester() != null) existing.setSemester(request.getSemester());
+        if (request.getStatus() != null) existing.setStatus(request.getStatus());
 
         return repository.save(existing);
     }
 
     public void delete(Long id) {
-        if (!repository.deleteById(id)) {
+        if (!repository.existsById(id)) {
             throw new ApplicationNotFoundException(id);
         }
+        repository.deleteById(id);
+    }
+
+    public Map<String, Map<String, Long>> getStatistics() {
+        Map<String, Long> byStatus = toMap(repository.countGroupByStatus());
+        Map<String, Long> byType = toMap(repository.countGroupByType());
+        Map<String, Long> bySemester = toMap(repository.countGroupBySemester());
+
+        Map<String, Map<String, Long>> stats = new LinkedHashMap<>();
+        stats.put("byStatus", byStatus);
+        stats.put("byType", byType);
+        stats.put("bySemester", bySemester);
+        return stats;
+    }
+
+    private Map<String, Long> toMap(List<Object[]> rows) {
+        Map<String, Long> map = new LinkedHashMap<>();
+        for (Object[] row : rows) {
+            map.put(row[0].toString(), (Long) row[1]);
+        }
+        return map;
+    }
+
+    private PageResponse<Application> paginate(List<Application> list, int page, int size) {
+        long total = list.size();
+        int totalPages = size > 0 ? (int) Math.ceil((double) total / size) : 0;
+        int from = page * size;
+        List<Application> content = from >= list.size() ? List.of() : list.subList(from, Math.min(from + size, list.size()));
+        return new PageResponse<>(content, page, size, total, totalPages);
     }
 }
