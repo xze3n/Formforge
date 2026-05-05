@@ -16,10 +16,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final ApplicationWebSocketHandler handler;
     private final ChatWebSocketHandler chatHandler;
 
-    private static final String[] ALLOWED_ORIGINS = {
-        "http://localhost:5173",
-        "http://localhost:5174"
-    };
+    private static final String[] ALLOWED_ORIGINS = { "*" };
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {

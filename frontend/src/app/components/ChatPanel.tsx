@@ -150,7 +150,7 @@ export function ChatPanel({ user }: ChatPanelProps) {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-0.5 bg-white min-h-0 h-72">
+          <div className="h-72 overflow-y-auto p-3 space-y-0.5 bg-white">
             {messages.length === 0 && (
               <p className="text-center text-gray-400 text-sm mt-8">
                 No messages yet. Say hello!
