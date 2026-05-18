@@ -33,7 +33,8 @@ class AuthControllerTest {
 
     @Test
     void login_returnsOkWithResponse() {
-        LoginResponse resp = new LoginResponse(1L, "alice", "alice@test.com", "USER", Set.of("READ"));
+        LoginResponse resp = new LoginResponse(1L, "alice", "alice@test.com", "USER",
+                Set.of("READ"), "test.jwt.token");
         when(userService.login(any())).thenReturn(resp);
 
         LoginRequest req = new LoginRequest();
@@ -50,7 +51,8 @@ class AuthControllerTest {
 
     @Test
     void register_returnsCreatedWithResponse() {
-        LoginResponse resp = new LoginResponse(2L, "bob", "bob@test.com", "USER", Set.of());
+        LoginResponse resp = new LoginResponse(2L, "bob", "bob@test.com", "USER",
+                Set.of(), "test.jwt.token");
         when(userService.register(any())).thenReturn(resp);
 
         RegisterRequest req = new RegisterRequest();

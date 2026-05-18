@@ -8,16 +8,14 @@ export interface GraphQLResponse<T> {
   }>;
 }
 
-function userHeaders(): Record<string, string> {
+/** Returns the Authorization header if a valid session exists. */
+function authHeaders(): Record<string, string> {
   try {
     const raw = sessionStorage.getItem("formforge_user");
     if (!raw) return {};
     const user = JSON.parse(raw);
-    return {
-      "X-User-Id":   String(user.id),
-      "X-User-Name": user.username,
-      "X-User-Role": user.role,
-    };
+    if (!user?.token) return {};
+    return { Authorization: `Bearer ${user.token}` };
   } catch {
     return {};
   }
@@ -29,7 +27,7 @@ export async function graphqlRequest<T>(
 ): Promise<T> {
   const response = await fetch(GRAPHQL_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...userHeaders() },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ query, variables }),
   });
 

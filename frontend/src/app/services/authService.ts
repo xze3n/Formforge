@@ -6,6 +6,8 @@ export interface AuthUser {
   email: string;
   role: "ADMIN" | "USER";
   permissions: string[];
+  /** Signed JWT — attach as `Authorization: Bearer <token>` on every request. */
+  token: string;
 }
 
 export interface LoginCredentials {

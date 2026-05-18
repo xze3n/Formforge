@@ -9,6 +9,7 @@ import com.formforge.model.Role;
 import com.formforge.model.User;
 import com.formforge.repository.RoleRepository;
 import com.formforge.repository.UserRepository;
+import com.formforge.security.JwtUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
@@ -31,15 +33,21 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
-    @Mock private UserRepository userRepository;
-    @Mock private RoleRepository roleRepository;
-    @Mock private AuditLogService auditLogService;
+    @Mock private UserRepository   userRepository;
+    @Mock private RoleRepository   roleRepository;
+    @Mock private AuditLogService  auditLogService;
+    @Mock private PasswordEncoder  passwordEncoder;
+    @Mock private JwtUtil          jwtUtil;
 
     private UserService service;
 
     @BeforeEach
     void setUp() {
-        service = new UserService(userRepository, roleRepository, auditLogService);
+        service = new UserService(userRepository, roleRepository, auditLogService,
+                                  passwordEncoder, jwtUtil);
+        // Default: JWT util always returns a test token (lenient: not all tests reach this call)
+        lenient().when(jwtUtil.generateToken(anyLong(), anyString(), anyString()))
+                 .thenReturn("test.jwt.token");
     }
 
     @AfterEach
@@ -47,12 +55,13 @@ class UserServiceTest {
         RequestContextHolder.resetRequestAttributes();
     }
 
-    // ── login ─────────────────────────────────────────────────────────────────
+    // â”€â”€ login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
-    void login_success_returnsResponse_andLogsSuccess() {
-        User user = buildUser(1L, "alice", "alice@test.com", "secret", "USER");
+    void login_success_returnsResponse_withToken_andLogsSuccess() {
+        User user = buildUser(1L, "alice", "alice@test.com", "$2a$10$hashed", "USER");
         when(userRepository.findByEmail("alice@test.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("secret", "$2a$10$hashed")).thenReturn(true);
 
         LoginRequest req = new LoginRequest();
         req.setEmail("alice@test.com");
@@ -62,7 +71,8 @@ class UserServiceTest {
 
         assertEquals(1L, resp.getId());
         assertEquals("alice", resp.getUsername());
-        assertEquals("USER", resp.getRole());
+        assertEquals("USER",  resp.getRole());
+        assertEquals("test.jwt.token", resp.getToken());
 
         verify(auditLogService).logAuth(eq(1L), eq("alice"), eq("USER"),
                 eq(AuditAction.LOGIN_SUCCESS), isNull(), anyString(), eq(true));
@@ -86,8 +96,9 @@ class UserServiceTest {
 
     @Test
     void login_wrongPassword_throwsUnauthorized_andLogsFailure() {
-        User user = buildUser(2L, "bob", "bob@test.com", "correctPass", "USER");
+        User user = buildUser(2L, "bob", "bob@test.com", "$2a$10$hashed", "USER");
         when(userRepository.findByEmail("bob@test.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrongPass", "$2a$10$hashed")).thenReturn(false);
 
         LoginRequest req = new LoginRequest();
         req.setEmail("bob@test.com");
@@ -101,8 +112,9 @@ class UserServiceTest {
 
     @Test
     void login_usesXForwardedFor_whenPresent() {
-        User user = buildUser(1L, "alice", "alice@test.com", "secret", "USER");
+        User user = buildUser(1L, "alice", "alice@test.com", "$2a$10$hashed", "USER");
         when(userRepository.findByEmail("alice@test.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
 
         MockHttpServletRequest httpReq = new MockHttpServletRequest();
         httpReq.addHeader("X-Forwarded-For", "203.0.113.1, 10.0.0.1");
@@ -119,8 +131,9 @@ class UserServiceTest {
 
     @Test
     void login_usesRemoteAddr_whenNoXff() {
-        User user = buildUser(1L, "alice", "alice@test.com", "secret", "USER");
+        User user = buildUser(1L, "alice", "alice@test.com", "$2a$10$hashed", "USER");
         when(userRepository.findByEmail("alice@test.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
 
         MockHttpServletRequest httpReq = new MockHttpServletRequest();
         httpReq.setRemoteAddr("192.168.1.50");
@@ -137,9 +150,9 @@ class UserServiceTest {
 
     @Test
     void login_usesUnknownIp_whenNoRequestContext() {
-        User user = buildUser(1L, "alice", "alice@test.com", "secret", "USER");
+        User user = buildUser(1L, "alice", "alice@test.com", "$2a$10$hashed", "USER");
         when(userRepository.findByEmail("alice@test.com")).thenReturn(Optional.of(user));
-        // No request context bound → currentIp() catches and returns "unknown"
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
 
         LoginRequest req = new LoginRequest();
         req.setEmail("alice@test.com");
@@ -150,15 +163,16 @@ class UserServiceTest {
                 eq(AuditAction.LOGIN_SUCCESS), isNull(), eq("unknown"), eq(true));
     }
 
-    // ── register ──────────────────────────────────────────────────────────────
+    // â”€â”€ register â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
-    void register_success_savesUser_andLogsRegister() {
+    void register_success_encodesPassword_savesUser_andLogsRegister() {
         Role userRole = buildRole("USER");
         when(userRepository.existsByEmail("carol@test.com")).thenReturn(false);
         when(userRepository.existsByUsername("carol")).thenReturn(false);
         when(roleRepository.findByName("USER")).thenReturn(Optional.of(userRole));
-        User saved = buildUser(5L, "carol", "carol@test.com", "pass", "USER");
+        when(passwordEncoder.encode("pass")).thenReturn("$2a$10$encoded");
+        User saved = buildUser(5L, "carol", "carol@test.com", "$2a$10$encoded", "USER");
         when(userRepository.save(any())).thenReturn(saved);
 
         RegisterRequest req = new RegisterRequest();
@@ -170,6 +184,9 @@ class UserServiceTest {
 
         assertEquals(5L, resp.getId());
         assertEquals("carol", resp.getUsername());
+        assertEquals("test.jwt.token", resp.getToken());
+        // Verify password was encoded before saving
+        verify(passwordEncoder).encode("pass");
         verify(auditLogService).logAuth(eq(5L), eq("carol"), eq("USER"),
                 eq(AuditAction.REGISTER), isNull(), anyString(), eq(true));
     }
@@ -219,7 +236,7 @@ class UserServiceTest {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, ex.getStatusCode());
     }
 
-    // ── helpers ───────────────────────────────────────────────────────────────
+    // â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private User buildUser(Long id, String username, String email, String password, String roleName) {
         Permission perm = new Permission(1L, "READ");
@@ -237,3 +254,4 @@ class UserServiceTest {
         return new Role(1L, name, Set.of(new Permission(1L, "READ")));
     }
 }
+

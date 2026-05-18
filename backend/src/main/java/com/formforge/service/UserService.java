@@ -8,9 +8,11 @@ import com.formforge.model.Role;
 import com.formforge.model.User;
 import com.formforge.repository.RoleRepository;
 import com.formforge.repository.UserRepository;
+import com.formforge.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -25,11 +27,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserService {
 
-    private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
-    private final AuditLogService auditLogService;
+    private final UserRepository   userRepository;
+    private final RoleRepository   roleRepository;
+    private final AuditLogService  auditLogService;
+    private final PasswordEncoder  passwordEncoder;
+    private final JwtUtil          jwtUtil;
 
-    /** Validates credentials and returns the user's profile + permissions. */
+    /** Validates credentials and returns the user's profile + a signed JWT. */
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         String ip = currentIp();
@@ -42,7 +46,7 @@ public class UserService {
         }
 
         User user = maybeUser.get();
-        if (!user.getPassword().equals(request.getPassword())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             auditLogService.logAuth(user.getId(), user.getUsername(), primaryRole(user),
                     AuditAction.LOGIN_FAILURE, "Wrong password", ip, false);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
@@ -54,7 +58,7 @@ public class UserService {
         return response;
     }
 
-    /** Registers a new account with the default USER role. */
+    /** Registers a new account with the default USER role and returns a JWT. */
     @Transactional
     public LoginResponse register(RegisterRequest request) {
         String ip = currentIp();
@@ -73,7 +77,7 @@ public class UserService {
         User newUser = new User();
         newUser.setUsername(request.getUsername());
         newUser.setEmail(request.getEmail());
-        newUser.setPassword(request.getPassword());
+        newUser.setPassword(passwordEncoder.encode(request.getPassword()));
         newUser.setRoles(Set.of(userRole));
 
         User saved = userRepository.save(newUser);
@@ -91,8 +95,9 @@ public class UserService {
                 .flatMap(r -> r.getPermissions().stream())
                 .map(p -> p.getName())
                 .collect(Collectors.toSet());
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), primaryRole);
         return new LoginResponse(user.getId(), user.getUsername(), user.getEmail(),
-                primaryRole, permissions);
+                primaryRole, permissions, token);
     }
 
     private String primaryRole(User user) {

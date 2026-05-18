@@ -1,7 +1,14 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { loginApi, registerApi, type AuthUser, type LoginCredentials, type RegisterCredentials } from "../services/authService";
 
 const SESSION_KEY = "formforge_user";
+
+/**
+ * Inactivity timeout in milliseconds.
+ * Matches the JWT expiration (30 minutes). The user is automatically logged out
+ * when no mouse, keyboard, or touch activity is detected for this duration.
+ */
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -26,6 +33,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // ── inactivity logout ──────────────────────────────────────────────────────
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearInactivityTimer = useCallback(() => {
+    if (inactivityTimer.current !== null) {
+      clearTimeout(inactivityTimer.current);
+      inactivityTimer.current = null;
+    }
+  }, []);
+
+  const resetInactivityTimer = useCallback((currentUser: AuthUser | null) => {
+    clearInactivityTimer();
+    if (!currentUser) return;
+    inactivityTimer.current = setTimeout(() => {
+      // Logout happens inside the effect; reference the setter directly to
+      // avoid a stale-closure dependency on `logout`.
+      sessionStorage.removeItem(SESSION_KEY);
+      setUser(null);
+      setError(null);
+    }, INACTIVITY_TIMEOUT_MS);
+  }, [clearInactivityTimer]);
+
+  // Register activity listeners whenever there is an authenticated user.
+  useEffect(() => {
+    if (!user) {
+      clearInactivityTimer();
+      return;
+    }
+
+    // Start the timer for the current session.
+    resetInactivityTimer(user);
+
+    const onActivity = () => resetInactivityTimer(user);
+    const events = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"] as const;
+    events.forEach((ev) => window.addEventListener(ev, onActivity, { passive: true }));
+
+    return () => {
+      clearInactivityTimer();
+      events.forEach((ev) => window.removeEventListener(ev, onActivity));
+    };
+  }, [user, resetInactivityTimer, clearInactivityTimer]);
+
+  // ── auth actions ───────────────────────────────────────────────────────────
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     setLoading(true);
@@ -62,10 +113,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    clearInactivityTimer();
     sessionStorage.removeItem(SESSION_KEY);
     setUser(null);
     setError(null);
-  }, []);
+  }, [clearInactivityTimer]);
 
   const hasPermission = useCallback(
     (permission: string) => user?.permissions.includes(permission) ?? false,

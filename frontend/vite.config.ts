@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 export default defineConfig({
   plugins: [
@@ -9,6 +10,7 @@ export default defineConfig({
     // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
+    basicSsl(),
   ],
   resolve: {
     alias: {
@@ -23,8 +25,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/graphql': {
-        target: 'http://localhost:8080',
+        target: 'https://localhost:8443',
         changeOrigin: true,
+        secure: false,        // accept the self-signed certificate in dev
         configure: (proxy) => {
           proxy.on('proxyReq', (proxyReq) => {
             proxyReq.removeHeader('origin');
@@ -32,12 +35,14 @@ export default defineConfig({
         },
       },
       '/ws': {
-        target: 'http://localhost:8080',
+        target: 'https://localhost:8443',
         ws: true,
+        secure: false,
       },
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'https://localhost:8443',
         changeOrigin: true,
+        secure: false,
       },
     },
   },

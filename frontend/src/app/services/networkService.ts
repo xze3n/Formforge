@@ -9,13 +9,14 @@ let pingTimer: ReturnType<typeof setInterval> | null = null;
 
 async function checkServer(): Promise<boolean> {
   try {
-    const res = await fetch(GRAPHQL_URL, {
+    await fetch(GRAPHQL_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: "{ __typename }" }),
       cache: "no-store",
     });
-    return res.ok;
+    // Any HTTP response (including 401 from protected endpoints) means the server is reachable
+    return true;
   } catch {
     return false;
   }
