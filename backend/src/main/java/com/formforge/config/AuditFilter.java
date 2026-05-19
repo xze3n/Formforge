@@ -5,14 +5,24 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
 /**
- * Reads X-User-Id / X-User-Name / X-User-Role headers forwarded by the React
- * frontend and populates {@link AuditContextHolder} for the duration of the request.
+ * Populates {@link AuditContextHolder} from the Spring Security context for the
+ * duration of each request.
+ *
+ * <p>Spring Security's {@code FilterChainProxy} has order {@code -100}, so by the
+ * time this filter (order {@code 1}) executes, the {@code JwtAuthenticationFilter}
+ * has already validated the bearer token and set the authentication in the
+ * {@code SecurityContextHolder}. Reading from the security context here avoids
+ * trusting client-supplied headers.
  */
 @Component
 @Order(1)
@@ -24,14 +34,27 @@ public class AuditFilter extends OncePerRequestFilter {
                                     FilterChain chain)
             throws ServletException, IOException {
         try {
-            String userIdHeader = request.getHeader("X-User-Id");
-            if (userIdHeader != null && !userIdHeader.isBlank()) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null
+                    && auth.isAuthenticated()
+                    && !(auth instanceof AnonymousAuthenticationToken)) {
+
                 AuditContextHolder.AuditContext ctx = new AuditContextHolder.AuditContext();
-                try {
-                    ctx.setUserId(Long.parseLong(userIdHeader.trim()));
-                } catch (NumberFormatException ignored) { /* malformed – treat as anonymous */ }
-                ctx.setUsername(request.getHeader("X-User-Name"));
-                ctx.setUserRole(request.getHeader("X-User-Role"));
+
+                if (auth.getPrincipal() instanceof Long userId) {
+                    ctx.setUserId(userId);
+                }
+                if (auth.getDetails() instanceof String username) {
+                    ctx.setUsername(username);
+                }
+
+                String role = auth.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .filter(a -> a.startsWith("ROLE_"))
+                        .map(a -> a.substring(5))
+                        .findFirst()
+                        .orElse("USER");
+                ctx.setUserRole(role);
                 ctx.setIpAddress(extractIp(request));
                 AuditContextHolder.set(ctx);
             }

@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.graphql.ExecutionGraphQlService;
 import org.springframework.graphql.test.tester.ExecutionGraphQlServiceTester;
 import org.springframework.graphql.test.tester.GraphQlTester;
+import org.springframework.security.test.context.support.WithMockUser;
 
 import java.time.Year;
 import java.util.Arrays;
@@ -20,6 +21,7 @@ import java.util.Arrays;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
+@WithMockUser(authorities = {"ROLE_ADMIN", "PERMISSION_READ_APPLICATIONS", "PERMISSION_WRITE_APPLICATIONS", "PERMISSION_DELETE_APPLICATIONS"})
 class ApplicationGraphQLControllerTest {
 
     @Autowired

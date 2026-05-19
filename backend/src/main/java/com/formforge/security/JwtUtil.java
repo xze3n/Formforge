@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Stateless JWT helper: generates and validates HMAC-SHA256 signed tokens.
@@ -41,15 +43,20 @@ public class JwtUtil {
         this.expirationMs = expirationMinutes * 60_000L;
     }
 
-    /** Creates a signed JWT for the given user. */
-    public String generateToken(Long userId, String username, String role) {
+    /** Creates a signed JWT carrying the user's id, username, role, and permissions. */
+    public String generateToken(Long userId, String username, String role, Set<String> permissions) {
         Date now    = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
+
+        String permsClaim = (permissions != null && !permissions.isEmpty())
+                ? String.join(",", permissions)
+                : "";
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("username", username)
                 .claim("role", role)
+                .claim("permissions", permsClaim)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(signingKey)
@@ -80,5 +87,15 @@ public class JwtUtil {
 
     public String extractRole(Claims claims) {
         return claims.get("role", String.class);
+    }
+
+    /** Returns the set of permission names embedded in the token (e.g. "READ_APPLICATIONS"). */
+    public Set<String> extractPermissions(Claims claims) {
+        String raw = claims.get("permissions", String.class);
+        if (raw == null || raw.isBlank()) return Set.of();
+        return Set.of(raw.split(",")).stream()
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
     }
 }

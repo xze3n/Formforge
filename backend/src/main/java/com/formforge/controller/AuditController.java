@@ -13,26 +13,27 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
 import java.time.Instant;
 import java.util.Map;
 
 /**
  * Admin-only REST endpoints for audit log inspection and observation management.
- * Role enforcement is done in-method (frontend ADMIN guard + header-based role check).
+ * Role enforcement is delegated to Spring Security via {@code @PreAuthorize}.
  */
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AuditController {
 
-    private final AuditLogRepository    auditLogRepository;
+    private final AuditLogRepository         auditLogRepository;
     private final ObservationEntryRepository observationRepo;
-    private final AuditLogService       auditLogService;
+    private final AuditLogService            auditLogService;
 
     // ── Audit Logs ────────────────────────────────────────────────────────────
 
@@ -43,7 +44,6 @@ public class AuditController {
             @RequestParam(required = false)    Long   userId,
             @RequestParam(required = false)    String action) {
 
-        requireAdmin();
         auditLogService.logAuth(
                 ctxUserId(), ctxUsername(), ctxRole(),
                 AuditAction.ADMIN_VIEW_LOGS, null, ctxIp(), true);
@@ -72,7 +72,6 @@ public class AuditController {
             @RequestParam(defaultValue = "50")    int     size,
             @RequestParam(defaultValue = "false") boolean unresolvedOnly) {
 
-        requireAdmin();
         auditLogService.logAuth(
                 ctxUserId(), ctxUsername(), ctxRole(),
                 AuditAction.ADMIN_VIEW_OBSERVATIONS, null, ctxIp(), true);
@@ -88,14 +87,11 @@ public class AuditController {
 
     @GetMapping("/observations/count")
     public Map<String, Long> getUnresolvedCount() {
-        requireAdmin();
         return Map.of("unresolved", observationRepo.countByResolvedFalse());
     }
 
     @PostMapping("/observations/{id}/resolve")
     public ObservationEntryDto resolveObservation(@PathVariable Long id) {
-        requireAdmin();
-
         ObservationEntry entry = observationRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Observation not found: " + id));
@@ -115,16 +111,8 @@ public class AuditController {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private void requireAdmin() {
-        AuditContextHolder.AuditContext ctx = AuditContextHolder.get();
-        if (ctx == null || !"ADMIN".equalsIgnoreCase(ctx.getUserRole())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Admin access required");
-        }
-    }
-
-    private Long   ctxUserId()   { AuditContextHolder.AuditContext c = AuditContextHolder.get(); return c != null ? c.getUserId()  : null; }
-    private String ctxUsername() { AuditContextHolder.AuditContext c = AuditContextHolder.get(); return c != null ? c.getUsername() : null; }
-    private String ctxRole()     { AuditContextHolder.AuditContext c = AuditContextHolder.get(); return c != null ? c.getUserRole() : null; }
-    private String ctxIp()       { AuditContextHolder.AuditContext c = AuditContextHolder.get(); return c != null ? c.getIpAddress(): null; }
+    private Long   ctxUserId()   { AuditContextHolder.AuditContext c = AuditContextHolder.get(); return c != null ? c.getUserId()   : null; }
+    private String ctxUsername() { AuditContextHolder.AuditContext c = AuditContextHolder.get(); return c != null ? c.getUsername()  : null; }
+    private String ctxRole()     { AuditContextHolder.AuditContext c = AuditContextHolder.get(); return c != null ? c.getUserRole()  : null; }
+    private String ctxIp()       { AuditContextHolder.AuditContext c = AuditContextHolder.get(); return c != null ? c.getIpAddress() : null; }
 }

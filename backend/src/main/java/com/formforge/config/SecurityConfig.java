@@ -45,16 +45,16 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Public authentication endpoints
+                // Public authentication endpoints (login, register, token refresh, password reset)
                 .requestMatchers("/api/auth/**").permitAll()
                 // GraphiQL IDE (dev convenience) and preflight
                 .requestMatchers("/graphiql/**").permitAll()
                 // WebSocket upgrade path
                 .requestMatchers("/ws/**").permitAll()
-                // GraphQL endpoint — authenticated (role checks at resolver level)
+                // GraphQL endpoint — authenticated (fine-grained checks at resolver level via @PreAuthorize)
                 .requestMatchers("/graphql").authenticated()
-                // Audit log API
-                .requestMatchers("/api/audit/**").authenticated()
+                // Admin API — additionally guarded by @PreAuthorize("hasRole('ADMIN')") on the controller
+                .requestMatchers("/api/admin/**").authenticated()
                 // Anything else requires authentication
                 .anyRequest().authenticated()
             )

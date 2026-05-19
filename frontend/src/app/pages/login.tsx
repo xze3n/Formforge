@@ -6,7 +6,7 @@ import { Checkbox } from "../components/ui/checkbox";
 import { useAuth } from "../hooks/useAuth";
 
 export function Login() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const { login, loading, error } = useAuth();
@@ -15,7 +15,7 @@ export function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login({ email, password });
+      await login({ identifier, password });
       navigate("/scholarship-applications", { replace: true });
     } catch {
       // error is already set in useAuth
@@ -41,17 +41,17 @@ export function Login() {
               </div>
             )}
 
-            {/* Email Field */}
+            {/* Identifier Field */}
             <div className="space-y-2">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
+              <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
+                Email or username
               </label>
               <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="identifier"
+                type="text"
+                placeholder="Enter your email or username"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
               />
             </div>
@@ -72,18 +72,23 @@ export function Login() {
             </div>
 
             {/* Remember Me */}
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked === true)}
-              />
-              <label
-                htmlFor="remember"
-                className="text-sm text-gray-700 cursor-pointer"
-              >
-                Remember me
-              </label>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked === true)}
+                />
+                <label
+                  htmlFor="remember"
+                  className="text-sm text-gray-700 cursor-pointer"
+                >
+                  Remember me
+                </label>
+              </div>
+              <a href="/forgot-password" className="text-sm text-purple-600 hover:text-purple-700 font-medium">
+                Forgot password?
+              </a>
             </div>
 
             {/* Login Button */}

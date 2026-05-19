@@ -8,10 +8,13 @@ export interface AuthUser {
   permissions: string[];
   /** Signed JWT — attach as `Authorization: Bearer <token>` on every request. */
   token: string;
+  /** Opaque refresh token for obtaining new access tokens. */
+  refreshToken: string;
 }
 
 export interface LoginCredentials {
-  email: string;
+  /** Email address or username */
+  identifier: string;
   password: string;
 }
 
@@ -30,7 +33,7 @@ export async function loginApi(credentials: LoginCredentials): Promise<AuthUser>
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.message || body.detail || "Invalid email or password");
+    throw new Error(body.message || body.detail || "Invalid credentials");
   }
 
   return response.json();
@@ -49,4 +52,54 @@ export async function registerApi(credentials: RegisterCredentials): Promise<Aut
   }
 
   return response.json();
+}
+
+export async function refreshTokenApi(refreshToken: string): Promise<AuthUser> {
+  const response = await fetch(`${AUTH_URL}/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Session expired. Please log in again.");
+  }
+
+  return response.json();
+}
+
+export async function logoutApi(refreshToken: string): Promise<void> {
+  await fetch(`${AUTH_URL}/logout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  }).catch(() => {/* best-effort */});
+}
+
+export async function forgotPasswordApi(email: string): Promise<{ message: string; resetToken?: string }> {
+  const response = await fetch(`${AUTH_URL}/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message || "Request failed");
+  }
+
+  return response.json();
+}
+
+export async function resetPasswordApi(token: string, newPassword: string): Promise<void> {
+  const response = await fetch(`${AUTH_URL}/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, newPassword }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message || body.detail || "Password reset failed");
+  }
 }

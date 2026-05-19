@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 
 import java.time.Year;
@@ -32,6 +33,7 @@ public class ApplicationGraphQLController {
     // ── Queries ────────────────────────────────────────────────────────
 
     @QueryMapping
+    @PreAuthorize("hasAuthority('PERMISSION_READ_APPLICATIONS')")
     public PageResponse<Application> applications(
             @Argument int page,
             @Argument int size,
@@ -48,11 +50,13 @@ public class ApplicationGraphQLController {
     }
 
     @QueryMapping
+    @PreAuthorize("hasAuthority('PERMISSION_READ_APPLICATIONS')")
     public Application application(@Argument Long id) {
         return applicationService.getById(id);
     }
 
     @QueryMapping
+    @PreAuthorize("isAuthenticated()")
     public Map<String, List<String>> enums() {
         int currentYear = Year.now().getValue();
 
@@ -86,11 +90,13 @@ public class ApplicationGraphQLController {
     }
 
     @QueryMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Boolean> generatorStatus() {
         return Map.of("running", generatorService.isRunning());
     }
 
     @QueryMapping
+    @PreAuthorize("hasAuthority('PERMISSION_READ_APPLICATIONS')")
     public ApplicationStats statistics() {
         Map<String, Map<String, Long>> raw = applicationService.getStatistics();
         return new ApplicationStats(
@@ -103,6 +109,7 @@ public class ApplicationGraphQLController {
     // ── Mutations ──────────────────────────────────────────────────────
 
     @MutationMapping
+    @PreAuthorize("hasAuthority('PERMISSION_WRITE_APPLICATIONS')")
     public Application createApplication(@Argument CreateApplicationInput input) {
         validateAcademicYear(input.academicYear());
         CreateApplicationRequest request = new CreateApplicationRequest();
@@ -116,6 +123,7 @@ public class ApplicationGraphQLController {
     }
 
     @MutationMapping
+    @PreAuthorize("hasAuthority('PERMISSION_WRITE_APPLICATIONS')")
     public Application updateApplication(@Argument Long id, @Argument UpdateApplicationInput input) {
         if (input.academicYear() != null) validateAcademicYear(input.academicYear());
         UpdateApplicationRequest request = new UpdateApplicationRequest();
@@ -127,18 +135,21 @@ public class ApplicationGraphQLController {
     }
 
     @MutationMapping
+    @PreAuthorize("hasAuthority('PERMISSION_DELETE_APPLICATIONS')")
     public boolean deleteApplication(@Argument Long id) {
         applicationService.delete(id);
         return true;
     }
 
     @MutationMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Boolean> startGenerator() {
         generatorService.start();
         return Map.of("running", true);
     }
 
     @MutationMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Boolean> stopGenerator() {
         generatorService.stop();
         return Map.of("running", false);

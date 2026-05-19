@@ -27,5 +27,9 @@ public enum AuditAction {
     ADMIN_RESOLVE_OBSERVATION,
 
     // Security
-    UNAUTHORIZED_ACCESS
+    UNAUTHORIZED_ACCESS,
+
+    // Password recovery
+    PASSWORD_RESET_REQUEST,
+    PASSWORD_RESET_SUCCESS
 }

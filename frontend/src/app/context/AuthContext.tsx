@@ -1,14 +1,17 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
-import { loginApi, registerApi, type AuthUser, type LoginCredentials, type RegisterCredentials } from "../services/authService";
+import {
+  loginApi, registerApi, logoutApi, forgotPasswordApi, resetPasswordApi,
+  type AuthUser, type LoginCredentials, type RegisterCredentials,
+} from "../services/authService";
 
 const SESSION_KEY = "formforge_user";
 
 /**
  * Inactivity timeout in milliseconds.
- * Matches the JWT expiration (30 minutes). The user is automatically logged out
+ * Matches the JWT expiration (15 minutes). The user is automatically logged out
  * when no mouse, keyboard, or touch activity is detected for this duration.
  */
-const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -17,6 +20,8 @@ interface AuthContextValue {
   login: (credentials: LoginCredentials) => Promise<AuthUser>;
   register: (credentials: RegisterCredentials) => Promise<AuthUser>;
   logout: () => void;
+  forgotPassword: (email: string) => Promise<{ message: string; resetToken?: string }>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
   hasPermission: (permission: string) => boolean;
 }
 
@@ -48,8 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearInactivityTimer();
     if (!currentUser) return;
     inactivityTimer.current = setTimeout(() => {
-      // Logout happens inside the effect; reference the setter directly to
-      // avoid a stale-closure dependency on `logout`.
+      if (currentUser.refreshToken) logoutApi(currentUser.refreshToken);
       sessionStorage.removeItem(SESSION_KEY);
       setUser(null);
       setError(null);
@@ -114,10 +118,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     clearInactivityTimer();
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (raw) {
+      try {
+        const stored = JSON.parse(raw) as AuthUser;
+        if (stored.refreshToken) logoutApi(stored.refreshToken);
+      } catch { /* ignore */ }
+    }
     sessionStorage.removeItem(SESSION_KEY);
     setUser(null);
     setError(null);
   }, [clearInactivityTimer]);
+
+  const forgotPassword = useCallback(async (email: string) => {
+    return forgotPasswordApi(email);
+  }, []);
+
+  const resetPassword = useCallback(async (token: string, newPassword: string) => {
+    return resetPasswordApi(token, newPassword);
+  }, []);
 
   const hasPermission = useCallback(
     (permission: string) => user?.permissions.includes(permission) ?? false,
@@ -125,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <AuthContext.Provider value={{ user, error, loading, login, register, logout, hasPermission }}>
+    <AuthContext.Provider value={{ user, error, loading, login, register, logout, forgotPassword, resetPassword, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

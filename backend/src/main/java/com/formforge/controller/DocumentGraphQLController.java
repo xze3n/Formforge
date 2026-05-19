@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
@@ -22,11 +23,13 @@ public class DocumentGraphQLController {
     // ── Queries ────────────────────────────────────────────────────────
 
     @QueryMapping
+    @PreAuthorize("hasAuthority('PERMISSION_READ_APPLICATIONS')")
     public List<Document> documents(@Argument Long applicationId) {
         return documentService.getByApplicationId(applicationId);
     }
 
     @QueryMapping
+    @PreAuthorize("hasAuthority('PERMISSION_READ_APPLICATIONS')")
     public Document document(@Argument Long id) {
         return documentService.getById(id);
     }
@@ -34,6 +37,7 @@ public class DocumentGraphQLController {
     // ── Mutations ──────────────────────────────────────────────────────
 
     @MutationMapping
+    @PreAuthorize("hasAuthority('PERMISSION_WRITE_APPLICATIONS')")
     public Document createDocument(@Argument Long applicationId, @Argument CreateDocumentInput input) {
         CreateDocumentRequest request = new CreateDocumentRequest();
         request.setName(input.name());
@@ -44,6 +48,7 @@ public class DocumentGraphQLController {
     }
 
     @MutationMapping
+    @PreAuthorize("hasAuthority('PERMISSION_WRITE_APPLICATIONS')")
     public Document updateDocument(@Argument Long id, @Argument UpdateDocumentInput input) {
         UpdateDocumentRequest request = new UpdateDocumentRequest();
         if (input.name() != null) request.setName(input.name());
@@ -55,6 +60,7 @@ public class DocumentGraphQLController {
     }
 
     @MutationMapping
+    @PreAuthorize("hasAuthority('PERMISSION_DELETE_APPLICATIONS')")
     public boolean deleteDocument(@Argument Long id) {
         documentService.delete(id);
         return true;

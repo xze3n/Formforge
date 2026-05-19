@@ -15,6 +15,8 @@ public class LoginResponse {
     private String role;
     /** All permission names granted through the user's roles. */
     private Set<String> permissions;
-    /** Signed JWT – must be sent as {@code Authorization: Bearer <token>}. */
+    /** Short-lived signed JWT – send as {@code Authorization: Bearer <token>}. */
     private String token;
+    /** Long-lived refresh token – use {@code POST /api/auth/refresh} to obtain a new access token. */
+    private String refreshToken;
 }

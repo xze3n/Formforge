@@ -16,7 +16,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Reads the {@code Authorization: Bearer <token>} header on every request,
@@ -53,11 +55,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String username = jwtUtil.extractUsername(claims);
             String role     = jwtUtil.extractRole(claims);
             Long   userId   = jwtUtil.extractUserId(claims);
+            Set<String> permissions = jwtUtil.extractPermissions(claims);
 
-            // Attach authority e.g. "ROLE_USER" or "ROLE_ADMIN"
-            var authority = new SimpleGrantedAuthority("ROLE_" + role);
-            var auth      = new UsernamePasswordAuthenticationToken(
-                                userId, null, List.of(authority));
+            // Build authorities: ROLE_<role> + PERMISSION_<name> for each permission
+            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+            for (String perm : permissions) {
+                authorities.add(new SimpleGrantedAuthority("PERMISSION_" + perm));
+            }
+
+            var auth = new UsernamePasswordAuthenticationToken(userId, null, authorities);
             auth.setDetails(username);
 
             SecurityContextHolder.getContext().setAuthentication(auth);

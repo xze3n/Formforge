@@ -10,6 +10,7 @@ const mockUser: AuthUser = {
   role: "USER",
   permissions: ["READ_APPLICATIONS", "WRITE_APPLICATIONS"],
   token: "header.payload.signature",
+  refreshToken: "refresh.token.value",
 };
 
 function mockFetch(status: number, body: unknown) {
@@ -32,17 +33,17 @@ describe("loginApi", () => {
   });
 
   it("sends POST to /api/auth/login with credentials", async () => {
-    await loginApi({ email: "alice@test.com", password: "secret" });
+    await loginApi({ identifier: "alice@test.com", password: "secret" });
 
     expect(fetch).toHaveBeenCalledWith("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "alice@test.com", password: "secret" }),
+      body: JSON.stringify({ identifier: "alice@test.com", password: "secret" }),
     });
   });
 
   it("returns the parsed AuthUser including token on success", async () => {
-    const result = await loginApi({ email: "alice@test.com", password: "secret" });
+    const result = await loginApi({ identifier: "alice@test.com", password: "secret" });
 
     expect(result.id).toBe(1);
     expect(result.username).toBe("alice");
@@ -55,7 +56,7 @@ describe("loginApi", () => {
     vi.stubGlobal("fetch", mockFetch(401, { message: "Invalid email or password" }));
 
     await expect(
-      loginApi({ email: "bad@test.com", password: "wrong" })
+      loginApi({ identifier: "bad@test.com", password: "wrong" })
     ).rejects.toThrow("Invalid email or password");
   });
 
@@ -63,8 +64,8 @@ describe("loginApi", () => {
     vi.stubGlobal("fetch", mockFetch(500, {}));
 
     await expect(
-      loginApi({ email: "a@b.com", password: "x" })
-    ).rejects.toThrow("Invalid email or password");
+      loginApi({ identifier: "a@b.com", password: "x" })
+    ).rejects.toThrow("Invalid credentials");
   });
 });
 

@@ -49,25 +49,9 @@ class AuditControllerTest {
         AuditContextHolder.clear();
     }
 
-    // ── requireAdmin ─────────────────────────────────────────────────────────
-
-    @Test
-    void requireAdmin_throwsForbidden_whenNoContext() {
-        AuditContextHolder.clear();
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> controller.getUnresolvedCount());
-        assertEquals(403, ex.getStatusCode().value());
-    }
-
-    @Test
-    void requireAdmin_throwsForbidden_whenRoleIsUser() {
-        AuditContextHolder.AuditContext ctx = new AuditContextHolder.AuditContext();
-        ctx.setUserId(1L);
-        ctx.setUserRole("USER");
-        AuditContextHolder.set(ctx);
-        assertThrows(ResponseStatusException.class,
-                () -> controller.getUnresolvedCount());
-    }
+    // Admin access is enforced by @PreAuthorize("hasRole('ADMIN')") at the class level,
+    // which requires Spring Security AOP and cannot be verified in a plain unit test.
+    // Access control is covered by integration / security layer tests.
 
     // ── getAuditLogs ─────────────────────────────────────────────────────────
 

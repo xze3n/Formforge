@@ -3,6 +3,8 @@ import { Layout } from "./layout";
 import { Home } from "./pages/home";
 import { Login } from "./pages/login";
 import { Register } from "./pages/register";
+import { ForgotPassword } from "./pages/forgot-password";
+import { ResetPassword } from "./pages/reset-password";
 import { ScholarshipApplications } from "./pages/scholarship-applications";
 import { AddApplication } from "./pages/add-application";
 import { ApplicationDetail } from "./pages/application-detail";
@@ -15,9 +17,11 @@ export const router = createBrowserRouter([
     Component: Layout,
     children: [
       { index: true, Component: Home },
-      { path: "login",    Component: Login },
-      { path: "register", Component: Register },
-      { path: "admin",    Component: AdminPage },
+      { path: "login",            Component: Login },
+      { path: "register",         Component: Register },
+      { path: "forgot-password",  Component: ForgotPassword },
+      { path: "reset-password",   Component: ResetPassword },
+      { path: "admin",            Component: AdminPage },
       {
         // All application-related routes require authentication
         Component: ProtectedRoute,

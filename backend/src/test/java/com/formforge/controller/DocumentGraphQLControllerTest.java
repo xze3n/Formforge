@@ -6,11 +6,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.graphql.ExecutionGraphQlService;
 import org.springframework.graphql.test.tester.ExecutionGraphQlServiceTester;
 import org.springframework.graphql.test.tester.GraphQlTester;
 
 @SpringBootTest
+@WithMockUser(authorities = {"ROLE_ADMIN", "PERMISSION_READ_APPLICATIONS", "PERMISSION_WRITE_APPLICATIONS", "PERMISSION_DELETE_APPLICATIONS"})
 class DocumentGraphQLControllerTest {
 
     @Autowired

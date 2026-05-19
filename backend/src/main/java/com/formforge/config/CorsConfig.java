@@ -14,10 +14,14 @@ public class CorsConfig {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        // Temporarily allow all origins
-        config.setAllowedOriginPatterns(List.of("*"));
+        // Allow the Vite dev server; no wildcard so credentials can be sent
+        config.setAllowedOriginPatterns(List.of(
+                "https://localhost:*",
+                "http://localhost:*"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/graphql", config);

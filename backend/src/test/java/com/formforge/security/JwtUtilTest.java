@@ -5,6 +5,8 @@ import io.jsonwebtoken.JwtException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class JwtUtilTest {
@@ -23,14 +25,14 @@ class JwtUtilTest {
 
     @Test
     void generateToken_returnsNonNullString() {
-        String token = jwtUtil.generateToken(1L, "alice", "USER");
+        String token = jwtUtil.generateToken(1L, "alice", "USER", Set.of("READ_APPLICATIONS"));
         assertNotNull(token);
         assertFalse(token.isBlank());
     }
 
     @Test
     void generateToken_producesValidJwt_withThreeParts() {
-        String token = jwtUtil.generateToken(1L, "alice", "USER");
+        String token = jwtUtil.generateToken(1L, "alice", "USER", Set.of());
         // A valid JWT has header.payload.signature
         assertEquals(3, token.split("\\.").length);
     }
@@ -39,7 +41,7 @@ class JwtUtilTest {
 
     @Test
     void validateAndExtract_validToken_returnsClaims() {
-        String token = jwtUtil.generateToken(42L, "bob", "ADMIN");
+        String token = jwtUtil.generateToken(42L, "bob", "ADMIN", Set.of("READ_APPLICATIONS", "MANAGE_USERS"));
 
         Claims claims = jwtUtil.validateAndExtract(token);
 
@@ -51,7 +53,7 @@ class JwtUtilTest {
 
     @Test
     void validateAndExtract_invalidSignature_throwsJwtException() {
-        String token = jwtUtil.generateToken(1L, "alice", "USER");
+        String token = jwtUtil.generateToken(1L, "alice", "USER", Set.of());
         // Tamper with the signature part
         String tampered = token.substring(0, token.lastIndexOf('.') + 1) + "invalidsignature";
         assertThrows(JwtException.class, () -> jwtUtil.validateAndExtract(tampered));
@@ -66,7 +68,7 @@ class JwtUtilTest {
     void validateAndExtract_expiredToken_throwsJwtException() {
         // Create a JwtUtil with 0-minute expiry → token is immediately expired
         JwtUtil expiredUtil = new JwtUtil(SECRET, 0L);
-        String token = expiredUtil.generateToken(1L, "alice", "USER");
+        String token = expiredUtil.generateToken(1L, "alice", "USER", Set.of());
         // The token should be expired (or expiry == issued)
         // Parsing it with a 30-min util should still fail as the exp is in the past
         assertThrows(JwtException.class, () -> new JwtUtil(SECRET, 30).validateAndExtract(token));
@@ -76,23 +78,38 @@ class JwtUtilTest {
 
     @Test
     void extractUserId_returnsCorrectId() {
-        String token  = jwtUtil.generateToken(99L, "carol", "USER");
+        String token  = jwtUtil.generateToken(99L, "carol", "USER", Set.of());
         Claims claims = jwtUtil.validateAndExtract(token);
         assertEquals(99L, jwtUtil.extractUserId(claims));
     }
 
     @Test
     void extractUsername_returnsCorrectUsername() {
-        String token  = jwtUtil.generateToken(1L, "dave", "USER");
+        String token  = jwtUtil.generateToken(1L, "dave", "USER", Set.of());
         Claims claims = jwtUtil.validateAndExtract(token);
         assertEquals("dave", jwtUtil.extractUsername(claims));
     }
 
     @Test
     void extractRole_returnsCorrectRole() {
-        String token  = jwtUtil.generateToken(1L, "eve", "ADMIN");
+        String token  = jwtUtil.generateToken(1L, "eve", "ADMIN", Set.of());
         Claims claims = jwtUtil.validateAndExtract(token);
         assertEquals("ADMIN", jwtUtil.extractRole(claims));
+    }
+
+    @Test
+    void extractPermissions_returnsCorrectSet() {
+        Set<String> perms = Set.of("READ_APPLICATIONS", "WRITE_APPLICATIONS");
+        String token  = jwtUtil.generateToken(1L, "frank", "USER", perms);
+        Claims claims = jwtUtil.validateAndExtract(token);
+        assertEquals(perms, jwtUtil.extractPermissions(claims));
+    }
+
+    @Test
+    void extractPermissions_emptySet_returnsEmpty() {
+        String token  = jwtUtil.generateToken(1L, "grace", "USER", Set.of());
+        Claims claims = jwtUtil.validateAndExtract(token);
+        assertTrue(jwtUtil.extractPermissions(claims).isEmpty());
     }
 
     // ── constructor validation ────────────────────────────────────────────
