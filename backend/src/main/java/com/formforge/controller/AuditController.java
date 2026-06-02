@@ -54,7 +54,13 @@ public class AuditController {
         if (userId != null) {
             result = auditLogRepository.findByUserId(userId, pr).map(AuditLogDto::from);
         } else if (action != null && !action.isBlank()) {
-            AuditAction act = AuditAction.valueOf(action.toUpperCase());
+            AuditAction act;
+            try {
+                act = AuditAction.valueOf(action.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Unknown action: " + action);
+            }
             result = auditLogRepository.findByAction(act, pr).map(AuditLogDto::from);
         } else {
             result = auditLogRepository.findAllByOrderByCreatedAtDesc(pr).map(AuditLogDto::from);

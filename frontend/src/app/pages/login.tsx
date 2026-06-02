@@ -9,16 +9,30 @@ export function Login() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const { login, loading, error } = useAuth();
+  const [step, setStep] = useState<"credentials" | "2fa">("credentials");
+  const [twoFaCode, setTwoFaCode] = useState("");
+  const [twoFaMessage, setTwoFaMessage] = useState("");
+  const { login, verifyTwoFa, loading, error } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login({ identifier, password });
+      const res = await login({ identifier, password });
+      setTwoFaMessage(res.message);
+      setStep("2fa");
+    } catch {
+      // error already set in useAuth
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await verifyTwoFa(twoFaCode.trim());
       navigate("/scholarship-applications", { replace: true });
     } catch {
-      // error is already set in useAuth
+      // error already set in useAuth
     }
   };
 
@@ -30,82 +44,122 @@ export function Login() {
             Welcome Back
           </h1>
           <p className="text-gray-600 mb-8 text-center">
-            Sign in to your account to continue
+            {step === "credentials"
+              ? "Sign in to your account to continue"
+              : "Two-factor verification"}
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Error message */}
-            {error && (
-              <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
-            )}
+          {/* ── Step 1: credentials ── */}
+          {step === "credentials" && (
+            <form onSubmit={handleCredentials} className="space-y-6">
+              {error && (
+                <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
 
-            {/* Identifier Field */}
-            <div className="space-y-2">
-              <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
-                Email or username
-              </label>
-              <Input
-                id="identifier"
-                type="text"
-                placeholder="Enter your email or username"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                required
-              />
-            </div>
-
-            {/* Password Field */}
-            <div className="space-y-2">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            {/* Remember Me */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked === true)}
-                />
-                <label
-                  htmlFor="remember"
-                  className="text-sm text-gray-700 cursor-pointer"
-                >
-                  Remember me
+              <div className="space-y-2">
+                <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
+                  Email or username
                 </label>
+                <Input
+                  id="identifier"
+                  type="text"
+                  placeholder="Enter your email or username"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                />
               </div>
-              <a href="/forgot-password" className="text-sm text-purple-600 hover:text-purple-700 font-medium">
-                Forgot password?
-              </a>
-            </div>
 
-            {/* Login Button */}
-            <Button type="submit" className="w-full" size="lg" disabled={loading}>
-              {loading ? "Signing in…" : "Login"}
-            </Button>
+              <div className="space-y-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
 
-            {/* Register Link */}
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{" "}
-                <a href="/register" className="text-purple-600 hover:text-purple-700 font-medium">
-                  Register here
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="remember"
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked === true)}
+                  />
+                  <label htmlFor="remember" className="text-sm text-gray-700 cursor-pointer">
+                    Remember me
+                  </label>
+                </div>
+                <a href="/forgot-password" className="text-sm text-purple-600 hover:text-purple-700 font-medium">
+                  Forgot password?
                 </a>
-              </p>
-            </div>
-          </form>
+              </div>
+
+              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+                {loading ? "Signing in…" : "Login"}
+              </Button>
+
+              <div className="text-center">
+                <p className="text-sm text-gray-600">
+                  Don't have an account?{" "}
+                  <a href="/register" className="text-purple-600 hover:text-purple-700 font-medium">
+                    Register here
+                  </a>
+                </p>
+              </div>
+            </form>
+          )}
+
+          {/* ── Step 2: 2FA code ── */}
+          {step === "2fa" && (
+            <form onSubmit={handleVerify} className="space-y-6">
+              <div className="rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+                {twoFaMessage}
+              </div>
+
+              {error && (
+                <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label htmlFor="twoFaCode" className="block text-sm font-medium text-gray-700">
+                  Verification code
+                </label>
+                <Input
+                  id="twoFaCode"
+                  type="text"
+                  placeholder="Enter the 6-digit code from the server logs"
+                  value={twoFaCode}
+                  onChange={(e) => setTwoFaCode(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+                {loading ? "Verifying…" : "Verify"}
+              </Button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => { setStep("credentials"); setTwoFaCode(""); }}
+                  className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                >
+                  ← Back to login
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </main>

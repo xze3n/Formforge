@@ -24,7 +24,12 @@ export interface RegisterCredentials {
   password: string;
 }
 
-export async function loginApi(credentials: LoginCredentials): Promise<AuthUser> {
+export interface TwoFaRequiredResponse {
+  twoFactorRequired: true;
+  message: string;
+}
+
+export async function loginApi(credentials: LoginCredentials): Promise<TwoFaRequiredResponse> {
   const response = await fetch(`${AUTH_URL}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -34,6 +39,21 @@ export async function loginApi(credentials: LoginCredentials): Promise<AuthUser>
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(body.message || body.detail || "Invalid credentials");
+  }
+
+  return response.json();
+}
+
+export async function verifyTwoFaApi(token: string): Promise<AuthUser> {
+  const response = await fetch(`${AUTH_URL}/verify-2fa`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message || body.detail || "Invalid or expired verification code");
   }
 
   return response.json();

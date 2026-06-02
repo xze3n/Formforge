@@ -6,10 +6,13 @@ import com.formforge.dto.LoginResponse;
 import com.formforge.dto.RefreshTokenRequest;
 import com.formforge.dto.RegisterRequest;
 import com.formforge.dto.ResetPasswordRequest;
+import com.formforge.dto.TwoFaRequiredResponse;
+import com.formforge.dto.VerifyTwoFaRequest;
 import com.formforge.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,10 +27,16 @@ public class AuthController {
 
     private final UserService userService;
 
-    /** Authentication method 1 + 2: login with e-mail OR username + password. */
+    /** Step 1: validate password → issue 2FA token (logged to server console). */
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<TwoFaRequiredResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(userService.login(request));
+    }
+
+    /** Step 2: validate the 2FA token → return full JWT response. */
+    @PostMapping("/verify-2fa")
+    public ResponseEntity<LoginResponse> verifyTwoFa(@Valid @RequestBody VerifyTwoFaRequest request) {
+        return ResponseEntity.ok(userService.verifyTwoFa(request));
     }
 
     @PostMapping("/register")
@@ -62,5 +71,11 @@ public class AuthController {
             @Valid @RequestBody ResetPasswordRequest request) {
         userService.resetPassword(request);
         return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
+    }
+
+    /** Public health-check used by the frontend network monitor. Always returns 200. */
+    @GetMapping("/ping")
+    public ResponseEntity<Map<String, String>> ping() {
+        return ResponseEntity.ok(Map.of("status", "ok"));
     }
 }

@@ -6,17 +6,23 @@ import com.formforge.dto.LoginResponse;
 import com.formforge.dto.RefreshTokenRequest;
 import com.formforge.dto.RegisterRequest;
 import com.formforge.dto.ResetPasswordRequest;
+import com.formforge.dto.TwoFaRequiredResponse;
+import com.formforge.dto.VerifyTwoFaRequest;
 import com.formforge.model.AuditAction;
 import com.formforge.model.PasswordResetToken;
 import com.formforge.model.RefreshToken;
 import com.formforge.model.Role;
+import com.formforge.model.TwoFactorToken;
 import com.formforge.model.User;
 import com.formforge.repository.PasswordResetTokenRepository;
 import com.formforge.repository.RoleRepository;
+import com.formforge.repository.TwoFactorTokenRepository;
+import java.util.List;
 import com.formforge.repository.UserRepository;
 import com.formforge.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -33,6 +39,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -44,6 +51,10 @@ public class UserService {
     private final JwtUtil                      jwtUtil;
     private final RefreshTokenService          refreshTokenService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final TwoFactorTokenRepository     twoFactorTokenRepository;
+
+    /** Token validity for the 2FA link (10 minutes). */
+    private static final long TWO_FA_EXPIRY_MINUTES = 10;
 
     // ── Authentication method 1 + 2: email OR username + password ────────────
 
@@ -53,8 +64,13 @@ public class UserService {
      * username (method 2), giving three total ways to authenticate including
      * token-based refresh.
      */
+    /**
+     * Step 1 of login: validates credentials, generates a 2FA token, logs it to
+     * the console (simulating an e-mail send), and returns a pending response.
+     * The client must then call {@code POST /api/auth/verify-2fa} with the token.
+     */
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public TwoFaRequiredResponse login(LoginRequest request) {
         String ip = currentIp();
         String id = request.getIdentifier();
 
@@ -75,10 +91,59 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
 
+        // Invalidate any previous unused tokens for this user
+        twoFactorTokenRepository.deleteExpired(Instant.now());
+
+        // 6-digit numeric code (100000–999999)
+        String tokenValue = String.valueOf(100_000 + new java.util.Random().nextInt(900_000));
+        TwoFactorToken twoFaToken = new TwoFactorToken();
+        twoFaToken.setUserId(user.getId());
+        twoFaToken.setToken(tokenValue);
+        twoFaToken.setExpiresAt(Instant.now().plus(TWO_FA_EXPIRY_MINUTES, ChronoUnit.MINUTES));
+        twoFactorTokenRepository.save(twoFaToken);
+
+        // Simulate e-mail: log the verification link to the server console
+        log.info("╔══════════════════════════════════════════════════════════╗");
+        log.info("║  2FA VERIFICATION CODE for user: {}  ", user.getUsername());
+        log.info("║  Code   : {}  ", tokenValue);
+        log.info("║  Expires: {} minutes  ", TWO_FA_EXPIRY_MINUTES);
+        log.info("╚══════════════════════════════════════════════════════════╝");
+
+        auditLogService.logAuth(user.getId(), user.getUsername(), primaryRole(user),
+                AuditAction.LOGIN_SUCCESS, "2FA token issued", ip, true);
+        return TwoFaRequiredResponse.pending();
+    }
+
+    /**
+     * Step 2 of login: validates the 2FA token and returns the full JWT response.
+     */
+    @Transactional
+    public LoginResponse verifyTwoFa(VerifyTwoFaRequest request) {
+        String ip = currentIp();
+
+        TwoFactorToken twoFaToken = twoFactorTokenRepository
+                .findByToken(request.token())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "Invalid or expired verification code"));
+
+        if (twoFaToken.isUsed()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Verification code already used");
+        }
+        if (twoFaToken.getExpiresAt().isBefore(Instant.now())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Verification code has expired");
+        }
+
+        twoFaToken.setUsed(true);
+        twoFactorTokenRepository.save(twoFaToken);
+
+        User user = userRepository.findById(twoFaToken.getUserId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"));
+
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
         LoginResponse response = buildLoginResponse(user, refreshToken.getToken());
         auditLogService.logAuth(user.getId(), user.getUsername(), response.getRole(),
-                AuditAction.LOGIN_SUCCESS, null, ip, true);
+                AuditAction.LOGIN_SUCCESS, "2FA verified", ip, true);
         return response;
     }
 
@@ -228,7 +293,17 @@ public class UserService {
     }
 
     private String primaryRole(User user) {
-        return user.getRoles().stream().map(Role::getName).findFirst().orElse("USER");
+        // Prefer ADMIN > USER > any other role so the JWT always reflects the
+        // highest-privilege role even when a user has multiple roles assigned.
+        List<String> PRIORITY = List.of("ADMIN", "USER");
+        return user.getRoles().stream()
+                .map(Role::getName)
+                .min((a, b) -> {
+                    int ia = PRIORITY.contains(a) ? PRIORITY.indexOf(a) : Integer.MAX_VALUE;
+                    int ib = PRIORITY.contains(b) ? PRIORITY.indexOf(b) : Integer.MAX_VALUE;
+                    return Integer.compare(ia, ib);
+                })
+                .orElse("USER");
     }
 
     private String currentIp() {

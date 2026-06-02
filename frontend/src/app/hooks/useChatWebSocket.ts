@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 
 export interface ChatMessageData {
-  id: string;
+  id: number;
   userId: number;
   username: string;
   text: string;

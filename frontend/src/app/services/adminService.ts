@@ -26,6 +26,8 @@ export interface ObservationEntry {
   resolvedBy: string | null;
   triggerAction: string | null;
   occurrenceCount: number;
+  details: string | null;
+  aiExplanation: string | null;
 }
 
 export interface AdminPage<T> {
@@ -42,6 +44,7 @@ function adminHeaders(): HeadersInit {
     if (!raw) return {};
     const user = JSON.parse(raw);
     return {
+      Authorization: `Bearer ${user.token}`,
       "X-User-Id":   String(user.id),
       "X-User-Name": user.username,
       "X-User-Role": user.role,

@@ -1,6 +1,6 @@
 type NetworkListener = (online: boolean) => void;
 
-const GRAPHQL_URL = "/graphql";
+const PING_URL = "/api/auth/ping";
 const PING_INTERVAL = 10_000;
 
 let listeners: NetworkListener[] = [];
@@ -9,14 +9,8 @@ let pingTimer: ReturnType<typeof setInterval> | null = null;
 
 async function checkServer(): Promise<boolean> {
   try {
-    await fetch(GRAPHQL_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: "{ __typename }" }),
-      cache: "no-store",
-    });
-    // Any HTTP response (including 401 from protected endpoints) means the server is reachable
-    return true;
+    const res = await fetch(PING_URL, { method: "GET", cache: "no-store" });
+    return res.ok;
   } catch {
     return false;
   }

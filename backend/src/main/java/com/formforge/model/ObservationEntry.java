@@ -42,6 +42,12 @@ public class ObservationEntry {
     @Column(nullable = false)
     private int occurrenceCount = 1;
 
+    @Column(columnDefinition = "TEXT")
+    private String details;
+
+    @Column(columnDefinition = "TEXT")
+    private String aiExplanation;
+
     @PrePersist
     void prePersist() {
         if (detectedAt == null) detectedAt = Instant.now();

@@ -1,27 +1,32 @@
 package com.formforge.model;
 
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "chat_messages")
+@Entity
+@Table(name = "chat_messages")
 public class ChatMessage {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
+    @Column(nullable = false)
     private Long userId;
+
+    @Column(nullable = false)
     private String username;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String text;
 
-    @Indexed
+    @Column(nullable = false)
     private Instant timestamp;
 }

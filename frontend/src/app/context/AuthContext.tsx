@@ -1,23 +1,24 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import {
-  loginApi, registerApi, logoutApi, forgotPasswordApi, resetPasswordApi,
-  type AuthUser, type LoginCredentials, type RegisterCredentials,
+  loginApi, registerApi, logoutApi, forgotPasswordApi, resetPasswordApi, verifyTwoFaApi,
+  type AuthUser, type LoginCredentials, type RegisterCredentials, type TwoFaRequiredResponse,
 } from "../services/authService";
 
 const SESSION_KEY = "formforge_user";
 
 /**
  * Inactivity timeout in milliseconds.
- * Matches the JWT expiration (15 minutes). The user is automatically logged out
- * when no mouse, keyboard, or touch activity is detected for this duration.
+ * The user is automatically logged out when no mouse, keyboard, or touch
+ * activity is detected for this duration.
  */
-const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+const INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
 interface AuthContextValue {
   user: AuthUser | null;
   error: string | null;
   loading: boolean;
-  login: (credentials: LoginCredentials) => Promise<AuthUser>;
+  login: (credentials: LoginCredentials) => Promise<TwoFaRequiredResponse>;
+  verifyTwoFa: (token: string) => Promise<AuthUser>;
   register: (credentials: RegisterCredentials) => Promise<AuthUser>;
   logout: () => void;
   forgotPassword: (email: string) => Promise<{ message: string; resetToken?: string }>;
@@ -55,8 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     inactivityTimer.current = setTimeout(() => {
       if (currentUser.refreshToken) logoutApi(currentUser.refreshToken);
       sessionStorage.removeItem(SESSION_KEY);
-      setUser(null);
-      setError(null);
+      window.location.reload();
     }, INACTIVITY_TIMEOUT_MS);
   }, [clearInactivityTimer]);
 
@@ -86,12 +86,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const authUser = await loginApi(credentials);
+      return await loginApi(credentials);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Login failed";
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const verifyTwoFa = useCallback(async (token: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const authUser = await verifyTwoFaApi(token);
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(authUser));
       setUser(authUser);
       return authUser;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Login failed";
+      const message = err instanceof Error ? err.message : "Verification failed";
       setError(message);
       throw err;
     } finally {
@@ -144,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <AuthContext.Provider value={{ user, error, loading, login, register, logout, forgotPassword, resetPassword, hasPermission }}>
+    <AuthContext.Provider value={{ user, error, loading, login, verifyTwoFa, register, logout, forgotPassword, resetPassword, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

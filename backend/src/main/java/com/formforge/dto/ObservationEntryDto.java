@@ -15,7 +15,9 @@ public record ObservationEntryDto(
         Instant resolvedAt,
         String resolvedBy,
         String triggerAction,
-        int occurrenceCount
+        int occurrenceCount,
+        String details,
+        String aiExplanation
 ) {
     public static ObservationEntryDto from(ObservationEntry e) {
         return new ObservationEntryDto(
@@ -29,7 +31,9 @@ public record ObservationEntryDto(
                 e.getResolvedAt(),
                 e.getResolvedBy(),
                 e.getTriggerAction(),
-                e.getOccurrenceCount()
+                e.getOccurrenceCount(),
+                e.getDetails(),
+                e.getAiExplanation()
         );
     }
 }

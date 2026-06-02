@@ -148,6 +148,12 @@ function ObservationsTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Auto-refresh every 5 s so new detections appear in real time
+  useEffect(() => {
+    const id = setInterval(load, 5_000);
+    return () => clearInterval(id);
+  }, [load]);
+
   const handleResolve = async (id: number) => {
     setResolving(id);
     try {
@@ -188,7 +194,19 @@ function ObservationsTab() {
             ) : entries.map(e => (
               <tr key={e.id} className={e.resolved ? "bg-gray-50 opacity-60" : "hover:bg-red-50/30"}>
                 <td className="px-3 py-2 font-medium text-gray-800">{e.username ?? `uid:${e.userId}`}</td>
-                <td className="px-3 py-2 font-mono text-gray-700">{e.reason.replace(/_/g, " ")}</td>
+                <td className="px-3 py-2">
+                  <span className="font-mono text-gray-700">{e.reason.replace(/_/g, " ")}</span>
+                  {e.details && <div className="text-gray-500 text-[11px] mt-0.5 max-w-xs">{e.details}</div>}
+                  {e.aiExplanation && (
+                    <div className="mt-1.5 bg-purple-50 border border-purple-200 rounded p-1.5 text-[11px] text-purple-800 italic max-w-sm">
+                      <span className="not-italic font-semibold text-purple-600 mr-1">AI:</span>
+                      {e.aiExplanation}
+                    </div>
+                  )}
+                  {!e.aiExplanation && !e.resolved && (
+                    <div className="mt-1 text-[10px] text-gray-400 italic">AI analysis pending…</div>
+                  )}
+                </td>
                 <td className="px-3 py-2"><SeverityBadge s={e.severity} /></td>
                 <td className="px-3 py-2 whitespace-nowrap text-gray-500">{fmt(e.detectedAt)}</td>
                 <td className="px-3 py-2 text-center font-bold text-gray-700">{e.occurrenceCount}</td>

@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Analyses recent audit log activity per user and raises / escalates
@@ -35,6 +34,7 @@ public class ThreatDetectionService {
 
     private final AuditLogRepository auditLogRepository;
     private final ObservationEntryRepository observationEntryRepository;
+    private final OllamaService ollamaService;
 
     /** Runs all detection checks asynchronously so they never block the request. */
     @Async("auditTaskExecutor")
@@ -115,26 +115,23 @@ public class ThreatDetectionService {
 
     private void flag(Long userId, String username, String reason, String severity,
                       String triggerAction, String details) {
-        Optional<ObservationEntry> existing =
-                observationEntryRepository.findByUserIdAndReason(userId, reason);
+        // Atomic upsert — safe under concurrent async threads hitting the same rule.
+        observationEntryRepository.upsertObservation(
+                userId, username, reason, severity, triggerAction, details);
 
-        if (existing.isPresent()) {
-            ObservationEntry entry = existing.get();
-            entry.setOccurrenceCount(entry.getOccurrenceCount() + 1);
-            entry.setDetectedAt(Instant.now());
-            entry.setResolved(false); // re-surface if previously resolved
-            observationEntryRepository.save(entry);
-        } else {
-            observationEntryRepository.save(ObservationEntry.builder()
-                    .userId(userId)
-                    .username(username)
-                    .reason(reason)
-                    .severity(severity)
-                    .triggerAction(triggerAction)
-                    .occurrenceCount(1)
-                    .build());
-        }
+        ObservationEntry entry = observationEntryRepository
+                .findByUserIdAndReason(userId, reason)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Observation not found after upsert for user " + userId + " / " + reason));
 
         log.warn("THREAT [{}] user='{}' (id={}) — {}", severity, username, userId, details);
+
+        // AI explanation — blocking call on the async audit thread; never touches request threads
+        String explanation = ollamaService.explain(username, reason, details);
+        if (explanation != null && !explanation.isBlank()) {
+            entry.setAiExplanation(explanation);
+            observationEntryRepository.save(entry);
+            log.info("[AI] explanation stored for observation {} (user='{}')", entry.getId(), username);
+        }
     }
 }
