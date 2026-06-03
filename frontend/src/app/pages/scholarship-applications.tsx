@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
-import { Trash2, Plus, ChevronLeft, ChevronRight, Table as TableIcon, PieChart, LayoutGrid, Play, Square } from "lucide-react";
+import { Trash2, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Table as TableIcon, PieChart, LayoutGrid, Play, Square } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,7 @@ import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Legend, Toolti
 import { useApplicationRepository } from "../hooks/useApplicationRepository";
 import { useEnums } from "../hooks/useEnums";
 import { useApplicationWebSocket } from "../hooks/useApplicationWebSocket";
+import { useAuth } from "../hooks/useAuth";
 import { generatorApi } from "../services/generatorApi";
 import { applicationApi, type ApplicationPage } from "../services/applicationApi";
 import type { Application } from "../types/application";
@@ -43,6 +44,8 @@ const mergeUniqueById = (current: Application[], incoming: Application[]): Appli
 
 export function ScholarshipApplications() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const { applications, remove, addFromServer } = useApplicationRepository();
   const { enums } = useEnums();
   const { preferences, setViewMode: persistViewMode } = usePreferences();
@@ -217,18 +220,22 @@ export function ScholarshipApplications() {
 
   const onApplicationCreated = useCallback((app: Application) => {
     addFromServer(app);
+
+    // Always keep both total counters in sync so every view shows the correct count
+    setTableTotalElements((prev) => prev + 1);
+    setCardsTotalElements((prev) => {
+      const nextTotal = prev + 1;
+      setCardsTotalPages((prevPages) => Math.max(prevPages, Math.ceil(nextTotal / itemsPerPage)));
+      return nextTotal;
+    });
+
     if (viewMode === "table") {
-      // Invalidate prefetch cache and reload the current page so the new item appears
+      // Reload the current page so new rows appear in the table
       tablePrefetchCacheRef.current.clear();
       void loadTablePage(tableCurrentPage - 1);
     }
     if (viewMode === "cards") {
       setCardsApplications((prev) => mergeUniqueById(prev, [app]));
-      setCardsTotalElements((prev) => {
-        const nextTotal = prev + 1;
-        setCardsTotalPages((prevPages) => Math.max(prevPages, Math.ceil(nextTotal / itemsPerPage)));
-        return nextTotal;
-      });
       cardsPrefetchCacheRef.current.clear();
     }
   }, [addFromServer, itemsPerPage, loadTablePage, tableCurrentPage, viewMode]);
@@ -271,15 +278,15 @@ export function ScholarshipApplications() {
     void loadTablePage(tableCurrentPage - 1);
   }, [viewMode, tableCurrentPage, itemsPerPage, loadTablePage]);
 
-  // When statistics view is active, ensure we have a total count from the API
+  // When statistics view is active, fetch the total count from the API if not already loaded
   useEffect(() => {
     if (viewMode !== "statistics") return;
-    if (cardsTotalElements > 0 || tableTotalElements > 0) return;
-    // Fetch page 0 with a large size to populate statistics
-    void applicationApi.getPage(0, 1000).then(result => {
-      setCardsTotalElements(result.totalElements);
+    if (tableTotalElements > 0) return;
+    // Fetch a single page just to get totalElements
+    void applicationApi.getPage(0, 1).then(result => {
+      setTableTotalElements(result.totalElements);
     }).catch(() => { /* silently ignore */ });
-  }, [viewMode, cardsTotalElements, tableTotalElements]);
+  }, [viewMode, tableTotalElements]);
 
   // Offline recovery for table: if API load failed but cache arrived later
   useEffect(() => {
@@ -459,7 +466,7 @@ export function ScholarshipApplications() {
             <Plus className="size-4" />
             Add New Application
           </Button>
-          {!isPopulating ? (
+          {isAdmin && (!isPopulating ? (
             <Button onClick={handleStartPopulating} variant="outline" className="gap-2">
               <Play className="size-4" />
               Populate Table
@@ -469,7 +476,7 @@ export function ScholarshipApplications() {
               <Square className="size-4" />
               Stop Populating
             </Button>
-          )}
+          ))}
         </div>
 
         {/* View Mode Toggle */}
@@ -588,7 +595,7 @@ export function ScholarshipApplications() {
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Total Applications</p>
                     <p className="text-3xl font-bold text-gray-900">
-                      {cardsTotalElements || tableTotalElements || totalApplications}
+                      {tableTotalElements || cardsTotalElements || totalApplications}
                     </p>
                   </div>
                   <div className="size-12 bg-purple-100 flex items-center justify-center">
@@ -668,12 +675,12 @@ export function ScholarshipApplications() {
 
         {/* Cards */}
         {viewMode === "cards" && (
-          <div className="overflow-x-auto pb-2 space-y-4">
-            <div className="flex gap-6 md:grid md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {cardsApplications.map((app) => (
                 <div 
                   key={app.id} 
-                  className="min-w-[300px] md:min-w-0 bg-white rounded-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
+                  className="bg-white rounded-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
                   onClick={() => navigate(`/application/${app.id}`)}
                 >
                   <div className="p-6">
@@ -780,55 +787,75 @@ export function ScholarshipApplications() {
         {/* Pagination - Table view only */}
         {viewMode === "table" && (
           <div className="mt-6 space-y-3">
-            <div className="flex items-center gap-2 w-full">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => goToPage(tableCurrentPage - 1)}
-                disabled={tableCurrentPage === 1}
-                className="flex-1 sm:flex-none"
-              >
-                <ChevronLeft className="size-4" />
-                Previous
-              </Button>
-              
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (tableCurrentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (tableCurrentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = tableCurrentPage - 2 + i;
-                  }
-                  
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={tableCurrentPage === pageNum ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => goToPage(pageNum)}
-                      className="min-w-9"
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                })}
+            <div className="overflow-x-auto">
+              <div className="flex items-center gap-1 min-w-max">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(1)}
+                  disabled={tableCurrentPage === 1}
+                  aria-label="First page"
+                >
+                  <ChevronsLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(tableCurrentPage - 1)}
+                  disabled={tableCurrentPage === 1}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="size-4" />
+                  <span className="hidden sm:inline ml-1">Previous</span>
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (tableCurrentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (tableCurrentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = tableCurrentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={tableCurrentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => goToPage(pageNum)}
+                        className="min-w-9"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(tableCurrentPage + 1)}
+                  disabled={tableCurrentPage >= totalPages}
+                  aria-label="Next page"
+                >
+                  <span className="hidden sm:inline mr-1">Next</span>
+                  <ChevronRight className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(totalPages)}
+                  disabled={tableCurrentPage >= totalPages}
+                  aria-label="Last page"
+                >
+                  <ChevronsRight className="size-4" />
+                </Button>
               </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => goToPage(tableCurrentPage + 1)}
-                disabled={tableCurrentPage >= totalPages}
-                className="flex-1 sm:flex-none"
-              >
-                Next
-                <ChevronRight className="size-4" />
-              </Button>
             </div>
 
             <div className="text-sm text-gray-700 whitespace-nowrap">

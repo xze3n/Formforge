@@ -22,9 +22,6 @@ export function Navbar() {
 
   const primaryLinks = [
     { href: "/scholarship-applications", label: "Applications" },
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/personal-info", label: "Personal Info" },
-    { href: "/documents", label: "Documents" },
   ];
 
   const handleLogout = () => {

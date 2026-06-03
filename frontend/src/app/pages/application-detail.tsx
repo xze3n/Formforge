@@ -26,6 +26,7 @@ import { useDocumentRepository } from "../hooks/useDocumentRepository";
 import { useEnums } from "../hooks/useEnums";
 import { applicationApi } from "../services/applicationApi";
 import { offlineStorage } from "../services/offlineStorage";
+import { networkService } from "../services/networkService";
 import type { Application } from "../types/application";
 import type { UpdateDocumentInput } from "../types/document";
 
@@ -37,18 +38,49 @@ export function ApplicationDetail() {
 
   const [application, setApplication] = useState<Application | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const loadedOnlineRef = useRef(false);
+
+  const fetchApplication = useCallback(() => {
+    if (!id) return;
+    applicationApi.getById(Number(id))
+      .then(app => {
+        setApplication(app);
+        loadedOnlineRef.current = true;
+      })
+      .catch(() => {
+        // ignore — keep existing state
+      });
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
+    loadedOnlineRef.current = false;
     setLoading(true);
     applicationApi.getById(Number(id))
-      .then(setApplication)
+      .then(app => {
+        setApplication(app);
+        loadedOnlineRef.current = true;
+      })
       .catch(() => {
         const cached = offlineStorage.getApplications().find((a) => String(a.id) === String(id));
         setApplication(cached);
       })
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Re-fetch from server after sync completes or when back online
+  useEffect(() => {
+    if (!id) return;
+    const onSyncEnd = () => fetchApplication();
+    window.addEventListener("ff:sync:end", onSyncEnd);
+    const unsubNetwork = networkService.subscribe((online) => {
+      if (online && !loadedOnlineRef.current && offlineStorage.pendingCount === 0) fetchApplication();
+    });
+    return () => {
+      window.removeEventListener("ff:sync:end", onSyncEnd);
+      unsubNetwork();
+    };
+  }, [id, fetchApplication]);
 
   const { documents, loading: docsLoading, error: docsError, add: addDocument, update: updateDocument, remove: removeDocument } = useDocumentRepository(Number(id));
 

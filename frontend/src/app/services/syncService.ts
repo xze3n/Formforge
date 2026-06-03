@@ -1,4 +1,5 @@
 import { applicationApi } from "./applicationApi";
+import { documentApi } from "./documentApi";
 import { offlineStorage, PendingOperation } from "./offlineStorage";
 
 export type SyncResult = {
@@ -24,23 +25,40 @@ async function processOperation(op: PendingOperation): Promise<void> {
       await applicationApi.delete(op.applicationId);
       break;
     }
+    case "CREATE_DOC": {
+      const created = await documentApi.create(op.applicationId, op.input);
+      offlineStorage.remapDocId(op.applicationId, op.tempId, created.id);
+      break;
+    }
+    case "UPDATE_DOC": {
+      await documentApi.update(op.documentId, op.input);
+      break;
+    }
+    case "DELETE_DOC": {
+      await documentApi.delete(op.documentId);
+      break;
+    }
   }
 }
 
 /**
  * Replay all queued offline operations against the server.
- * Operations are processed sequentially in the order they were created.
+ * Operations are processed sequentially. After each success the queue is
+ * re-read from storage so that ID remaps (e.g. temp → real application ID)
+ * are visible to subsequent operations before they run.
  */
 export async function syncOfflineChanges(): Promise<SyncResult> {
-  const queue = offlineStorage.getQueue();
   const result: SyncResult = {
-    total: queue.length,
+    total: offlineStorage.getQueue().length,
     succeeded: 0,
     failed: 0,
     errors: [],
   };
 
-  for (const op of queue) {
+  // Re-read the queue on every iteration so remapped IDs are always fresh.
+  let queue = offlineStorage.getQueue();
+  while (queue.length > 0) {
+    const op = queue[0];
     try {
       await processOperation(op);
       offlineStorage.dequeue(op.id);
@@ -49,7 +67,10 @@ export async function syncOfflineChanges(): Promise<SyncResult> {
       const msg = err instanceof Error ? err.message : String(err);
       result.errors.push(`${op.kind} (${op.id}): ${msg}`);
       result.failed++;
+      // Skip this operation and continue with the rest
+      offlineStorage.dequeue(op.id);
     }
+    queue = offlineStorage.getQueue();
   }
 
   return result;

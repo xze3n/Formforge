@@ -18,7 +18,7 @@ export function Layout() {
       <CookieConsentBanner />
       <OfflineBanner />
       <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3">
-        <CookieDashboard />
+        {user?.role === "ADMIN" && <CookieDashboard />}
         {user && <ChatPanel user={user} />}
       </div>
     </div>

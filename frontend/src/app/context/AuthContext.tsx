@@ -80,6 +80,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [user, resetInactivityTimer, clearInactivityTimer]);
 
+  // ── session-expired event (HTTP 401 after failed refresh) ─────────────────
+  useEffect(() => {
+    const onExpired = () => {
+      clearInactivityTimer();
+      sessionStorage.removeItem(SESSION_KEY);
+      setUser(null);
+      setError(null);
+      window.location.href = "/login";
+    };
+    window.addEventListener("ff:auth:expired", onExpired);
+    return () => window.removeEventListener("ff:auth:expired", onExpired);
+  }, [clearInactivityTimer]);
+
   // ── auth actions ───────────────────────────────────────────────────────────
 
   const login = useCallback(async (credentials: LoginCredentials) => {

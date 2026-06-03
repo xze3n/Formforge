@@ -59,15 +59,30 @@ export async function graphqlRequest<T>(
     });
 
   let response = await doRequest();
-  let result: GraphQLResponse<T> = await response.json();
 
-  // On Unauthorized, attempt one silent refresh then retry.
-  if (isUnauthorized(result)) {
+  // Spring Security returns HTTP 401 before GraphQL even runs (expired/missing JWT).
+  // Also handle GraphQL-layer UNAUTHORIZED errors (role checks etc.).
+  const needsRefresh =
+    response.status === 401 ||
+    (response.headers.get("content-type")?.includes("application/json") &&
+      await response.clone().json().then(isUnauthorized<T>).catch(() => false));
+
+  if (needsRefresh) {
     const refreshed = await tryRefresh();
     if (refreshed) {
       response = await doRequest();
-      result = await response.json();
+    } else {
+      // Refresh failed — force logout so the user is sent to the login page
+      window.dispatchEvent(new Event("ff:auth:expired"));
+      throw new Error("Session expired. Please log in again.");
     }
+  }
+
+  let result: GraphQLResponse<T>;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error(`Unexpected response from server (HTTP ${response.status})`);
   }
 
   if (result.errors && result.errors.length > 0) {
