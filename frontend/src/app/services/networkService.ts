@@ -1,6 +1,7 @@
 type NetworkListener = (online: boolean) => void;
 
-const PING_URL = "/api/auth/ping";
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
+const PING_URL = `${API_BASE}/api/auth/ping`;
 const PING_INTERVAL = 10_000;
 
 let listeners: NetworkListener[] = [];

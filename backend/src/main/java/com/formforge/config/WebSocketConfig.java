@@ -1,5 +1,6 @@
 package com.formforge.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
@@ -16,13 +17,15 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final ApplicationWebSocketHandler handler;
     private final ChatWebSocketHandler chatHandler;
 
-    private static final String[] ALLOWED_ORIGINS = { "https://localhost:5173", "https://localhost:5174" };
+    @Value("${cors.allowed-origins:https://localhost:5173,https://localhost:5174}")
+    private String allowedOriginsRaw;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        String[] origins = allowedOriginsRaw.split(",");
         registry.addHandler(handler, "/ws/applications")
-                .setAllowedOrigins(ALLOWED_ORIGINS);
+                .setAllowedOrigins(origins);
         registry.addHandler(chatHandler, "/ws/chat")
-                .setAllowedOrigins(ALLOWED_ORIGINS);
+                .setAllowedOrigins(origins);
     }
 }

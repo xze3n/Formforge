@@ -28,8 +28,11 @@ export const useApplicationWebSocket = ({
     if (cleanedUp.current) return;
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/applications`);
+    const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
+    const wsBase = apiUrl
+      ? apiUrl.replace(/^https/, "wss").replace(/^http/, "ws")
+      : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
+    const ws = new WebSocket(`${wsBase}/ws/applications`);
 
     wsRef.current = ws;
 

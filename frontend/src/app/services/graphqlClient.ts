@@ -1,6 +1,7 @@
 import { refreshTokenApi, type AuthUser } from "./authService";
 
-const GRAPHQL_URL = "/graphql";
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
+const GRAPHQL_URL = `${API_BASE}/graphql`;
 const SESSION_KEY = "formforge_user";
 
 export interface GraphQLResponse<T> {
