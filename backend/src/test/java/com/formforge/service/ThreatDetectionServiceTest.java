@@ -24,12 +24,13 @@ class ThreatDetectionServiceTest {
 
     @Mock private AuditLogRepository auditLogRepository;
     @Mock private ObservationEntryRepository observationEntryRepository;
+    @Mock private OllamaService ollamaService;
 
     private ThreatDetectionService service;
 
     @BeforeEach
     void setUp() {
-        service = new ThreatDetectionService(auditLogRepository, observationEntryRepository);
+        service = new ThreatDetectionService(auditLogRepository, observationEntryRepository, ollamaService);
     }
 
     // ── analyzeAsync runs synchronously in unit tests (no Spring proxy) ─────

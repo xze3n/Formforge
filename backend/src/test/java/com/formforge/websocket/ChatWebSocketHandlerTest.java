@@ -49,7 +49,7 @@ class ChatWebSocketHandlerTest {
     @Test
     void afterConnectionEstablished_sendsHistory() throws Exception {
         List<ChatMessage> history = List.of(
-                new ChatMessage("id1", 1L, "alice", "hello", Instant.now()));
+                new ChatMessage(null, 1L, "alice", "hello", Instant.now()));
         when(chatRepo.findTop50ByOrderByTimestampAsc()).thenReturn(history);
 
         FakeSession session = new FakeSession("s1");
@@ -100,7 +100,7 @@ class ChatWebSocketHandlerTest {
     @Test
     void handleTextMessage_validChatMessage_savesAndBroadcasts() throws Exception {
         when(chatRepo.findTop50ByOrderByTimestampAsc()).thenReturn(List.of());
-        ChatMessage saved = new ChatMessage("id1", 1L, "alice", "hello", Instant.now());
+        ChatMessage saved = new ChatMessage(null, 1L, "alice", "hello", Instant.now());
         when(chatRepo.save(any())).thenReturn(saved);
 
         FakeSession session = new FakeSession("s1");
@@ -162,7 +162,7 @@ class ChatWebSocketHandlerTest {
     @Test
     void broadcast_removesClosedSessions() throws Exception {
         when(chatRepo.findTop50ByOrderByTimestampAsc()).thenReturn(List.of());
-        ChatMessage saved = new ChatMessage("x", 1L, "a", "hi", Instant.now());
+        ChatMessage saved = new ChatMessage(null, 1L, "a", "hi", Instant.now());
         when(chatRepo.save(any())).thenReturn(saved);
 
         FakeSession open = new FakeSession("open");
@@ -184,7 +184,7 @@ class ChatWebSocketHandlerTest {
     @Test
     void broadcast_handlesIoException_gracefully() throws Exception {
         when(chatRepo.findTop50ByOrderByTimestampAsc()).thenReturn(List.of());
-        ChatMessage saved = new ChatMessage("x", 1L, "a", "hi", Instant.now());
+        ChatMessage saved = new ChatMessage(null, 1L, "a", "hi", Instant.now());
         when(chatRepo.save(any())).thenReturn(saved);
 
         FakeSession failing = new FakeSession("fail");
@@ -203,7 +203,7 @@ class ChatWebSocketHandlerTest {
     @Test
     void broadcast_serializeError_doesNotCrash() throws Exception {
         when(chatRepo.findTop50ByOrderByTimestampAsc()).thenReturn(List.of());
-        ChatMessage saved = new ChatMessage("id1", 1L, "alice", "hi", Instant.now());
+        ChatMessage saved = new ChatMessage(null, 1L, "alice", "hi", Instant.now());
         when(chatRepo.save(any())).thenReturn(saved);
 
         FakeSession session = new FakeSession("s1");

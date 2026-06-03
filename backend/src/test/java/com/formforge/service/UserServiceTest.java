@@ -6,6 +6,8 @@ import com.formforge.dto.LoginResponse;
 import com.formforge.dto.RefreshTokenRequest;
 import com.formforge.dto.RegisterRequest;
 import com.formforge.dto.ResetPasswordRequest;
+import com.formforge.dto.TwoFaRequiredResponse;
+import com.formforge.model.TwoFactorToken;
 import com.formforge.model.AuditAction;
 import com.formforge.model.PasswordResetToken;
 import com.formforge.model.Permission;
@@ -14,6 +16,7 @@ import com.formforge.model.Role;
 import com.formforge.model.User;
 import com.formforge.repository.PasswordResetTokenRepository;
 import com.formforge.repository.RoleRepository;
+import com.formforge.repository.TwoFactorTokenRepository;
 import com.formforge.repository.UserRepository;
 import com.formforge.security.JwtUtil;
 import org.junit.jupiter.api.AfterEach;
@@ -48,13 +51,15 @@ class UserServiceTest {
     @Mock private JwtUtil                      jwtUtil;
     @Mock private RefreshTokenService          refreshTokenService;
     @Mock private PasswordResetTokenRepository passwordResetTokenRepository;
+    @Mock private TwoFactorTokenRepository     twoFactorTokenRepository;
 
     private UserService service;
 
     @BeforeEach
     void setUp() {
         service = new UserService(userRepository, roleRepository, auditLogService,
-                passwordEncoder, jwtUtil, refreshTokenService, passwordResetTokenRepository);
+                passwordEncoder, jwtUtil, refreshTokenService, passwordResetTokenRepository,
+                twoFactorTokenRepository);
         lenient().when(jwtUtil.generateToken(anyLong(), anyString(), anyString(), any()))
                 .thenReturn("test.jwt.token");
         lenient().when(refreshTokenService.createRefreshToken(anyLong()))
@@ -69,25 +74,22 @@ class UserServiceTest {
     // login
 
     @Test
-    void login_withEmail_success_returnsResponse_andLogsSuccess() {
+    void login_withEmail_success_returnsTwoFaRequired_andLogsSuccess() {
         User user = buildUser(1L, "alice", "alice@test.com", "$2a$10$hashed", "USER");
         when(userRepository.findByEmail("alice@test.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("secret", "$2a$10$hashed")).thenReturn(true);
+        when(twoFactorTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         LoginRequest req = new LoginRequest();
         req.setIdentifier("alice@test.com");
         req.setPassword("secret");
 
-        LoginResponse resp = service.login(req);
+        TwoFaRequiredResponse resp = service.login(req);
 
-        assertEquals(1L, resp.getId());
-        assertEquals("alice", resp.getUsername());
-        assertEquals("USER",  resp.getRole());
-        assertEquals("test.jwt.token",     resp.getToken());
-        assertEquals("test.refresh.token", resp.getRefreshToken());
+        assertTrue(resp.twoFactorRequired());
 
         verify(auditLogService).logAuth(eq(1L), eq("alice"), eq("USER"),
-                eq(AuditAction.LOGIN_SUCCESS), isNull(), anyString(), eq(true));
+                eq(AuditAction.LOGIN_SUCCESS), eq("2FA token issued"), anyString(), eq(true));
     }
 
     @Test
@@ -96,15 +98,15 @@ class UserServiceTest {
         when(userRepository.findByEmail("bob")).thenReturn(Optional.empty());
         when(userRepository.findByUsername("bob")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("secret", "$2a$10$hashed")).thenReturn(true);
+        when(twoFactorTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         LoginRequest req = new LoginRequest();
         req.setIdentifier("bob");
         req.setPassword("secret");
 
-        LoginResponse resp = service.login(req);
+        TwoFaRequiredResponse resp = service.login(req);
 
-        assertEquals(2L, resp.getId());
-        assertEquals("bob", resp.getUsername());
+        assertTrue(resp.twoFactorRequired());
     }
 
     @Test

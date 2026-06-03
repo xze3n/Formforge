@@ -6,6 +6,7 @@ import com.formforge.dto.LoginResponse;
 import com.formforge.dto.RefreshTokenRequest;
 import com.formforge.dto.RegisterRequest;
 import com.formforge.dto.ResetPasswordRequest;
+import com.formforge.dto.TwoFaRequiredResponse;
 import com.formforge.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,21 +37,19 @@ class AuthControllerTest {
     }
 
     @Test
-    void login_returnsOkWithResponse() {
-        LoginResponse resp = new LoginResponse(1L, "alice", "alice@test.com", "USER",
-                Set.of("READ_APPLICATIONS"), "test.jwt.token", "test.refresh.token");
+    void login_returnsOkWithTwoFaRequiredResponse() {
+        TwoFaRequiredResponse resp = TwoFaRequiredResponse.pending();
         when(userService.login(any())).thenReturn(resp);
 
         LoginRequest req = new LoginRequest();
         req.setIdentifier("alice@test.com");
         req.setPassword("secret");
 
-        ResponseEntity<LoginResponse> result = controller.login(req);
+        ResponseEntity<TwoFaRequiredResponse> result = controller.login(req);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
-        assertEquals("alice", result.getBody().getUsername());
-        assertEquals("test.refresh.token", result.getBody().getRefreshToken());
+        assertTrue(result.getBody().twoFactorRequired());
         verify(userService).login(req);
     }
 
