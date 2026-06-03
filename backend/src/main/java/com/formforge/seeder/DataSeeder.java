@@ -3,6 +3,7 @@ package com.formforge.seeder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.datafaker.Faker;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -47,6 +48,9 @@ public class DataSeeder implements ApplicationRunner {
 
     private static final int TARGET_USER_COUNT = 10_000;
     private static final int BATCH_SIZE        = 500;
+
+    @Value("${seed.data.enabled:false}")
+    private boolean seedEnabled;
 
     private final JdbcTemplate    jdbc;
     private final PasswordEncoder passwordEncoder;
@@ -102,6 +106,10 @@ public class DataSeeder implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        if (!seedEnabled) {
+            log.info("[DataSeeder] Seeding disabled (seed.data.enabled=false) – skipping.");
+            return;
+        }
         long existingUsers = jdbc.queryForObject("SELECT COUNT(*) FROM users", Long.class);
         if (existingUsers >= TARGET_USER_COUNT) {
             log.info("[DataSeeder] {} users already present – skipping seed.", existingUsers);
