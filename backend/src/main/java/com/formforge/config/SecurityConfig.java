@@ -2,6 +2,7 @@ package com.formforge.config;
 
 import com.formforge.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -17,6 +18,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -26,6 +28,9 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+
+    @Value("${cors.allowed-origins:https://localhost:*,http://localhost:*}")
+    private String allowedOriginsRaw;
 
     /**
      * Stateless JWT-based security configuration.
@@ -72,11 +77,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Allow the Vite dev server; in production replace with the actual domain
-        config.setAllowedOriginPatterns(List.of(
-                "https://localhost:*",
-                "http://localhost:*"
-        ));
+        config.setAllowedOriginPatterns(Arrays.asList(allowedOriginsRaw.split(",")));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
