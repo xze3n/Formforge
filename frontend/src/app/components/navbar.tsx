@@ -122,13 +122,30 @@ export function Navbar() {
               ))}
               <div className="my-1 h-px bg-gray-100" />
               {user ? (
-                <button
-                  type="button"
-                  onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
-                  className="px-2 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left"
-                >
-                  Logout ({user.username})
-                </button>
+                <>
+                  {user.role === "ADMIN" && (
+                    <a
+                      href="/admin"
+                      className="relative px-2 py-2 rounded-md text-sm font-medium text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-1.5"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Shield className="w-3.5 h-3.5" />
+                      Admin
+                      {threatCount > 0 && (
+                        <span className="ml-1 flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold">
+                          {threatCount > 9 ? "9+" : threatCount}
+                        </span>
+                      )}
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                    className="px-2 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left"
+                  >
+                    Logout ({user.username})
+                  </button>
+                </>
               ) : (
                 <a
                   href="/register"

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Wifi, WifiOff } from "lucide-react";
+import { MessageCircle, X, Send } from "lucide-react";
 import { useChatWebSocket, type ChatMessageData } from "../hooks/useChatWebSocket";
 import type { AuthUser } from "../services/authService";
 
@@ -129,15 +129,6 @@ export function ChatPanel({ user }: ChatPanelProps) {
               <span className="font-semibold text-sm">Live Chat</span>
             </div>
             <div className="flex items-center gap-2">
-              {connected ? (
-                <span className="flex items-center gap-1 text-xs text-purple-200">
-                  <Wifi className="w-3 h-3" /> Live
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-xs text-red-300">
-                  <WifiOff className="w-3 h-3" /> Reconnecting…
-                </span>
-              )}
               <button
                 type="button"
                 onClick={() => setOpen(false)}
