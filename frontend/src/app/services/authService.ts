@@ -30,7 +30,6 @@ export interface TwoFaRequiredResponse {
   message: string;
   devCode?: string;
 }
-}
 
 export async function loginApi(credentials: LoginCredentials): Promise<TwoFaRequiredResponse> {
   const response = await fetch(`${AUTH_URL}/login`, {
