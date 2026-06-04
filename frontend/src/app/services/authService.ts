@@ -28,6 +28,8 @@ export interface RegisterCredentials {
 export interface TwoFaRequiredResponse {
   twoFactorRequired: true;
   message: string;
+  devCode?: string;
+}
 }
 
 export async function loginApi(credentials: LoginCredentials): Promise<TwoFaRequiredResponse> {

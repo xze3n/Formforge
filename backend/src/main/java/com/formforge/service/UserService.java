@@ -111,7 +111,7 @@ public class UserService {
 
         auditLogService.logAuth(user.getId(), user.getUsername(), primaryRole(user),
                 AuditAction.LOGIN_SUCCESS, "2FA token issued", ip, true);
-        return TwoFaRequiredResponse.pending();
+        return TwoFaRequiredResponse.pending(tokenValue);
     }
 
     /**

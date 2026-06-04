@@ -38,7 +38,7 @@ class AuthControllerTest {
 
     @Test
     void login_returnsOkWithTwoFaRequiredResponse() {
-        TwoFaRequiredResponse resp = TwoFaRequiredResponse.pending();
+        TwoFaRequiredResponse resp = TwoFaRequiredResponse.pending("123456");
         when(userService.login(any())).thenReturn(resp);
 
         LoginRequest req = new LoginRequest();

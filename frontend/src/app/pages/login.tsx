@@ -12,6 +12,7 @@ export function Login() {
   const [step, setStep] = useState<"credentials" | "2fa">("credentials");
   const [twoFaCode, setTwoFaCode] = useState("");
   const [twoFaMessage, setTwoFaMessage] = useState("");
+  const [twoFaDevCode, setTwoFaDevCode] = useState<string | null>(null);
   const { login, verifyTwoFa, loading, error } = useAuth();
   const navigate = useNavigate();
 
@@ -20,6 +21,7 @@ export function Login() {
     try {
       const res = await login({ identifier, password });
       setTwoFaMessage(res.message);
+      if (res.devCode) setTwoFaDevCode(res.devCode);
       setStep("2fa");
     } catch {
       // error already set in useAuth
@@ -123,6 +125,20 @@ export function Login() {
               <div className="rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
                 {twoFaMessage}
               </div>
+
+              {twoFaDevCode && (
+                <div className="rounded-md bg-yellow-50 border border-yellow-300 px-4 py-3 text-sm">
+                  <p className="font-semibold text-yellow-800 mb-1">Dev mode — your 2FA code:</p>
+                  <button
+                    type="button"
+                    onClick={() => setTwoFaCode(twoFaDevCode)}
+                    className="font-mono text-lg tracking-widest text-purple-700 hover:text-purple-900 font-bold"
+                  >
+                    {twoFaDevCode}
+                  </button>
+                  <p className="text-yellow-700 text-xs mt-1">Click the code to auto-fill</p>
+                </div>
+              )}
 
               {error && (
                 <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
