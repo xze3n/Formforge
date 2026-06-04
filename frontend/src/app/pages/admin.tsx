@@ -249,7 +249,7 @@ export function AdminPage() {
   if (!user || user.role !== "ADMIN") return <Navigate to="/" replace />;
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-8 overflow-x-hidden">
+    <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Shield className="w-7 h-7 text-purple-600" />
