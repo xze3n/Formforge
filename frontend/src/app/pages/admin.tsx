@@ -85,7 +85,7 @@ function AuditLogsTab() {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200">
-        <table className="w-full text-xs">
+        <table className="w-full min-w-[640px] text-xs">
           <thead className="bg-gray-50 text-gray-700 uppercase tracking-wide">
             <tr>
               {["Timestamp","User","Role","Action","Resource","IP","Status"].map(h => (
@@ -180,7 +180,7 @@ function ObservationsTab() {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200">
-        <table className="w-full text-xs">
+        <table className="w-full min-w-[640px] text-xs">
           <thead className="bg-gray-50 text-gray-700 uppercase tracking-wide">
             <tr>
               {["User","Reason","Severity","Detected","Count","Status","Action"].map(h => (
@@ -249,7 +249,7 @@ export function AdminPage() {
   if (!user || user.role !== "ADMIN") return <Navigate to="/" replace />;
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-8">
+    <main className="max-w-7xl mx-auto px-4 py-8 overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Shield className="w-7 h-7 text-purple-600" />
